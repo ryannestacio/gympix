@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "16853071429",
+    "project_id": "gympixapp",
+    "storage_bucket": "gympixapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:16853071429:android:6ab39e5d8ed012de29d52c",
+        "android_client_info": {
+          "package_name": "com.alltech.gympix"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjrU4s_vNYac1hSKb_8t4CBT3vAg6VCjQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:16853071429:android:a6d4443f2df030be29d52c",
+        "android_client_info": {
+          "package_name": "com.example.gym_easy_2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjrU4s_vNYac1hSKb_8t4CBT3vAg6VCjQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
