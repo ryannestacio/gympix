@@ -101,9 +101,9 @@ class ReportExportService {
     final doc = pw.Document();
     doc.addPage(
       pw.MultiPage(
-        pageTheme: pw.PageTheme(
+        pageTheme: const pw.PageTheme(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(24),
+          margin: pw.EdgeInsets.all(24),
         ),
         header: (context) => pw.Container(
           margin: const pw.EdgeInsets.only(bottom: 16),
@@ -278,9 +278,9 @@ class ReportExportService {
     final doc = pw.Document();
     doc.addPage(
       pw.MultiPage(
-        pageTheme: pw.PageTheme(
+        pageTheme: const pw.PageTheme(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(24),
+          margin: pw.EdgeInsets.all(24),
         ),
         header: (context) => pw.Container(
           margin: const pw.EdgeInsets.only(bottom: 16),

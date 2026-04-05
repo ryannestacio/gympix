@@ -10,6 +10,12 @@ set(BINARY_NAME "gym_easy_2")
 # versions of CMake.
 cmake_policy(VERSION 3.14...3.25)
 
+# CMake 4 removed compatibility with policy versions older than 3.5.
+# Some third-party CMake projects (for example Firebase C++ SDK) still call
+# `cmake_minimum_required(VERSION 3.1)`, so we set a floor globally to keep
+# those subprojects configurable.
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
 # Define build configuration option.
 get_property(IS_MULTICONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if(IS_MULTICONFIG)

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/firestore_error_formatter.dart';
 import '../../configuracoes/providers/config_providers.dart';
 import '../../relatorios/services/report_export_service.dart';
 import '../controllers/alunos_actions_controller.dart';
@@ -244,9 +245,9 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao salvar aluno: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(formatFirestoreError(e))),
+      );
     }
   }
 

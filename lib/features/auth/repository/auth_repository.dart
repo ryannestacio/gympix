@@ -48,6 +48,18 @@ class AuthRepository {
     await _auth.signOut();
   }
 
+  Future<void> sendPasswordResetEmail(String email) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail.isEmpty) {
+      throw const AuthLoginException('Informe o email para redefinir a senha.');
+    }
+    try {
+      await _auth.sendPasswordResetEmail(email: normalizedEmail);
+    } on FirebaseAuthException catch (e) {
+      throw AuthLoginException(_resetPasswordErrorMessage(e.code));
+    }
+  }
+
   Future<SessionLookupResult> resolveSession(User user) async {
     final membershipDoc = await _db
         .collection('user_tenants')
@@ -145,6 +157,16 @@ class AuthRepository {
       'network-request-failed' =>
         'Falha de rede. Verifique sua conexao e tente novamente.',
       _ => 'Nao foi possivel autenticar. Tente novamente.',
+    };
+  }
+
+  String _resetPasswordErrorMessage(String code) {
+    return switch (code) {
+      'invalid-email' => 'Email invalido.',
+      'user-not-found' => 'Nenhuma conta encontrada com este email.',
+      'too-many-requests' =>
+        'Muitas tentativas de redefinicao. Tente novamente mais tarde.',
+      _ => 'Nao foi possivel enviar o email de redefinicao. Tente novamente.',
     };
   }
 }

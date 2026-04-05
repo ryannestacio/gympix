@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 
 /// Cores semânticas (status) que não existem no ColorScheme padrão.
 class AppThemeExtensions extends ThemeExtension<AppThemeExtensions> {
-  static AppThemeExtensions of(BuildContext context) {
-    return Theme.of(context).extension<AppThemeExtensions>()!;
-  }
   const AppThemeExtensions({
     required this.success,
     required this.warning,
@@ -12,6 +9,10 @@ class AppThemeExtensions extends ThemeExtension<AppThemeExtensions> {
 
   final Color success;
   final Color warning;
+
+  static AppThemeExtensions of(BuildContext context) {
+    return Theme.of(context).extension<AppThemeExtensions>()!;
+  }
 
   @override
   AppThemeExtensions copyWith({Color? success, Color? warning}) {

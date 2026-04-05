@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_extensions.dart';
+import '../../../core/utils/firestore_error_formatter.dart';
 import '../../alunos/models/aluno.dart';
 import '../../alunos/providers/alunos_providers.dart';
 import '../../cobranca/providers/cobranca_regua_providers.dart';
@@ -343,9 +344,9 @@ class HomePage extends ConsumerWidget {
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao exportar CSV: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(formatFirestoreError(e))),
+      );
     }
   }
 
@@ -409,9 +410,9 @@ class HomePage extends ConsumerWidget {
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao fechar competencia: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(formatFirestoreError(e))),
+      );
     }
   }
 

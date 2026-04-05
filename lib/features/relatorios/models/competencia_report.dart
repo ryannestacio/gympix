@@ -14,6 +14,43 @@ class CompetenciaReportItem {
     this.observacao,
   });
 
+  factory CompetenciaReportItem.fromAluno(Aluno aluno, DateTime referencia) {
+    final pagamento = aluno.pagamentoDoMes(referencia);
+    return CompetenciaReportItem(
+      alunoId: aluno.id,
+      nome: aluno.nome,
+      telefone: aluno.telefone,
+      ativoNoFechamento: aluno.ativo,
+      diaVencimento: pagamento.diaVencimento,
+      valor: pagamento.valor,
+      status: pagamento.status,
+      pagoEm: pagamento.pagoEm,
+      comprovanteUrl: pagamento.comprovanteUrl,
+      observacao: pagamento.observacao,
+    );
+  }
+
+  factory CompetenciaReportItem.fromMap(Map<String, dynamic> map) {
+    final statusName = map['status'] as String? ?? PagamentoStatus.pendente.name;
+    final status = PagamentoStatus.values.firstWhere(
+      (value) => value.name == statusName,
+      orElse: () => PagamentoStatus.pendente,
+    );
+
+    return CompetenciaReportItem(
+      alunoId: map['alunoId'] as String? ?? '',
+      nome: map['nome'] as String? ?? '',
+      telefone: map['telefone'] as String? ?? '',
+      ativoNoFechamento: map['ativoNoFechamento'] as bool? ?? true,
+      diaVencimento: (map['diaVencimento'] as num?)?.toInt() ?? 1,
+      valor: (map['valor'] as num?)?.toDouble() ?? 0,
+      status: status,
+      pagoEm: _parseDate(map['pagoEm']),
+      comprovanteUrl: map['comprovanteUrl'] as String?,
+      observacao: map['observacao'] as String?,
+    );
+  }
+
   final String alunoId;
   final String nome;
   final String telefone;
@@ -38,22 +75,6 @@ class CompetenciaReportItem {
     }
   }
 
-  factory CompetenciaReportItem.fromAluno(Aluno aluno, DateTime referencia) {
-    final pagamento = aluno.pagamentoDoMes(referencia);
-    return CompetenciaReportItem(
-      alunoId: aluno.id,
-      nome: aluno.nome,
-      telefone: aluno.telefone,
-      ativoNoFechamento: aluno.ativo,
-      diaVencimento: pagamento.diaVencimento,
-      valor: pagamento.valor,
-      status: pagamento.status,
-      pagoEm: pagamento.pagoEm,
-      comprovanteUrl: pagamento.comprovanteUrl,
-      observacao: pagamento.observacao,
-    );
-  }
-
   Map<String, Object?> toMap() {
     return {
       'alunoId': alunoId,
@@ -68,27 +89,6 @@ class CompetenciaReportItem {
       'observacao': observacao,
     };
   }
-
-  factory CompetenciaReportItem.fromMap(Map<String, dynamic> map) {
-    final statusName = map['status'] as String? ?? PagamentoStatus.pendente.name;
-    final status = PagamentoStatus.values.firstWhere(
-      (value) => value.name == statusName,
-      orElse: () => PagamentoStatus.pendente,
-    );
-
-    return CompetenciaReportItem(
-      alunoId: map['alunoId'] as String? ?? '',
-      nome: map['nome'] as String? ?? '',
-      telefone: map['telefone'] as String? ?? '',
-      ativoNoFechamento: map['ativoNoFechamento'] as bool? ?? true,
-      diaVencimento: (map['diaVencimento'] as num?)?.toInt() ?? 1,
-      valor: (map['valor'] as num?)?.toDouble() ?? 0,
-      status: status,
-      pagoEm: _parseDate(map['pagoEm']),
-      comprovanteUrl: map['comprovanteUrl'] as String?,
-      observacao: map['observacao'] as String?,
-    );
-  }
 }
 
 class CompetenciaReportTotals {
@@ -100,13 +100,6 @@ class CompetenciaReportTotals {
     required this.previstoMes,
     required this.inadimplenciaPercent,
   });
-
-  final int totalAlunos;
-  final int pendentes;
-  final int atrasados;
-  final double recebidoMes;
-  final double previstoMes;
-  final double inadimplenciaPercent;
 
   factory CompetenciaReportTotals.fromAlunos(
     List<Aluno> alunos,
@@ -139,17 +132,6 @@ class CompetenciaReportTotals {
     );
   }
 
-  Map<String, Object?> toMap() {
-    return {
-      'totalAlunos': totalAlunos,
-      'pendentes': pendentes,
-      'atrasados': atrasados,
-      'recebidoMes': recebidoMes,
-      'previstoMes': previstoMes,
-      'inadimplenciaPercent': inadimplenciaPercent,
-    };
-  }
-
   factory CompetenciaReportTotals.fromMap(Map<String, dynamic> map) {
     return CompetenciaReportTotals(
       totalAlunos: (map['totalAlunos'] as num?)?.toInt() ?? 0,
@@ -160,6 +142,24 @@ class CompetenciaReportTotals {
       inadimplenciaPercent:
           (map['inadimplenciaPercent'] as num?)?.toDouble() ?? 0,
     );
+  }
+
+  final int totalAlunos;
+  final int pendentes;
+  final int atrasados;
+  final double recebidoMes;
+  final double previstoMes;
+  final double inadimplenciaPercent;
+
+  Map<String, Object?> toMap() {
+    return {
+      'totalAlunos': totalAlunos,
+      'pendentes': pendentes,
+      'atrasados': atrasados,
+      'recebidoMes': recebidoMes,
+      'previstoMes': previstoMes,
+      'inadimplenciaPercent': inadimplenciaPercent,
+    };
   }
 }
 
@@ -172,13 +172,6 @@ class CompetenciaReportData {
     this.fechadoEm,
     this.schemaVersion = 1,
   });
-
-  final String competencia;
-  final bool fechada;
-  final DateTime? fechadoEm;
-  final int schemaVersion;
-  final CompetenciaReportTotals totais;
-  final List<CompetenciaReportItem> alunosSnapshot;
 
   factory CompetenciaReportData.fromLive({
     required DateTime referencia,
@@ -196,28 +189,6 @@ class CompetenciaReportData {
       totais: CompetenciaReportTotals.fromAlunos(alunosDashboard, referencia),
       alunosSnapshot: itens,
     );
-  }
-
-  CompetenciaReportData toFechada([DateTime? now]) {
-    return CompetenciaReportData(
-      competencia: competencia,
-      fechada: true,
-      fechadoEm: now ?? DateTime.now(),
-      schemaVersion: schemaVersion,
-      totais: totais,
-      alunosSnapshot: alunosSnapshot,
-    );
-  }
-
-  Map<String, Object?> toFirestore() {
-    return {
-      'competencia': competencia,
-      'status': fechada ? 'fechado' : 'aberto',
-      'fechadoEm': fechadoEm?.toIso8601String(),
-      'schemaVersion': schemaVersion,
-      'totais': totais.toMap(),
-      'alunosSnapshot': alunosSnapshot.map((item) => item.toMap()).toList(),
-    };
   }
 
   factory CompetenciaReportData.fromFirestore(Map<String, dynamic> map) {
@@ -244,6 +215,35 @@ class CompetenciaReportData {
       ),
       alunosSnapshot: itens,
     );
+  }
+
+  final String competencia;
+  final bool fechada;
+  final DateTime? fechadoEm;
+  final int schemaVersion;
+  final CompetenciaReportTotals totais;
+  final List<CompetenciaReportItem> alunosSnapshot;
+
+  CompetenciaReportData toFechada([DateTime? now]) {
+    return CompetenciaReportData(
+      competencia: competencia,
+      fechada: true,
+      fechadoEm: now ?? DateTime.now(),
+      schemaVersion: schemaVersion,
+      totais: totais,
+      alunosSnapshot: alunosSnapshot,
+    );
+  }
+
+  Map<String, Object?> toFirestore() {
+    return {
+      'competencia': competencia,
+      'status': fechada ? 'fechado' : 'aberto',
+      'fechadoEm': fechadoEm?.toIso8601String(),
+      'schemaVersion': schemaVersion,
+      'totais': totais.toMap(),
+      'alunosSnapshot': alunosSnapshot.map((item) => item.toMap()).toList(),
+    };
   }
 }
 

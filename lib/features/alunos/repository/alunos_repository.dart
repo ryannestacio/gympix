@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/utils/firestore_retry_policy.dart';
 import '../models/aluno.dart';
+import 'aluno_mapper.dart';
 
 class AlunosRepository {
   AlunosRepository(
@@ -17,7 +18,7 @@ class AlunosRepository {
   DocumentReference<Map<String, dynamic>> get _tenantDoc =>
       _db.collection('tenants').doc(_tenantId);
 
-  CollectionReference<Map<String, dynamic>> get _col =>
+  CollectionReference<Map<String, dynamic>> get _alunosCol =>
       _tenantDoc.collection('alunos');
 
   Stream<List<Aluno>> watchAlunos() {
@@ -33,8 +34,8 @@ class AlunosRepository {
   }
 
   Stream<List<Aluno>> _watchAlunos({bool onlyActive = false}) {
-    return _col.orderBy('diaVencimento').snapshots().map((snap) {
-      final alunos = snap.docs.map(Aluno.fromDoc).toList();
+    return _alunosCol.orderBy('diaVencimento').snapshots().map((snap) {
+      final alunos = snap.docs.map(AlunoMapper.fromDoc).toList();
       if (!onlyActive) return alunos;
       return alunos.where((aluno) => aluno.ativo).toList();
     });
@@ -77,12 +78,14 @@ class AlunosRepository {
       pagoLegado: null,
     );
 
-    return _retryPolicy.execute(() => _col.add(novo.toFirestoreCreate()));
+    return _retryPolicy.execute(
+      () => _alunosCol.add(AlunoMapper.toFirestoreCreate(novo)),
+    );
   }
 
   Future<void> updateAluno(Aluno aluno) {
-    final data = aluno.toFirestoreUpdate();
-    return _retryPolicy.execute(() => _col.doc(aluno.id).update(data));
+    final data = AlunoMapper.toFirestoreUpdate(aluno);
+    return _retryPolicy.execute(() => _alunosCol.doc(aluno.id).update(data));
   }
 
   Future<void> syncPagamentoDoMesAtual(Aluno aluno) {
@@ -90,23 +93,23 @@ class AlunosRepository {
     final pagamento = aluno.pagamentoDoMesSincronizadoComCadastro();
     final data = {
       'pagamentos.$competencia': {
-        ...pagamento.toFirestore(),
+        ...AlunoMapper.pagamentoToFirestore(pagamento),
         'atualizadoEm': FieldValue.serverTimestamp(),
       },
       'pago': pagamento.pago,
     };
-    return _retryPolicy.execute(() => _col.doc(aluno.id).update(data));
+    return _retryPolicy.execute(() => _alunosCol.doc(aluno.id).update(data));
   }
 
   Future<void> archiveAluno(String id) {
-    return _retryPolicy.execute(() => _col.doc(id).update({
+    return _retryPolicy.execute(() => _alunosCol.doc(id).update({
       'ativo': false,
       'arquivadoEm': FieldValue.serverTimestamp(),
     }));
   }
 
   Future<void> unarchiveAluno(String id) {
-    return _retryPolicy.execute(() => _col.doc(id).update({
+    return _retryPolicy.execute(() => _alunosCol.doc(id).update({
       'ativo': true,
       'arquivadoEm': null,
     }));
@@ -146,11 +149,11 @@ class AlunosRepository {
 
     final data = {
       'pagamentos.$competencia': {
-        ...pagamento.toFirestore(),
+        ...AlunoMapper.pagamentoToFirestore(pagamento),
         'atualizadoEm': FieldValue.serverTimestamp(),
       },
       'pago': pago,
     };
-    return _retryPolicy.execute(() => _col.doc(aluno.id).update(data));
+    return _retryPolicy.execute(() => _alunosCol.doc(aluno.id).update(data));
   }
 }

@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum PagamentoStatus { pendente, atrasado, pago }
 
@@ -49,14 +49,11 @@ class PagamentoMensal {
   }
 
   String get statusLabel {
-    switch (status) {
-      case PagamentoStatus.pago:
-        return 'Pago';
-      case PagamentoStatus.atrasado:
-        return 'Atrasado';
-      case PagamentoStatus.pendente:
-        return 'Pendente';
-    }
+    return switch (status) {
+      PagamentoStatus.pago => 'Pago',
+      PagamentoStatus.atrasado => 'Atrasado',
+      PagamentoStatus.pendente => 'Pendente',
+    };
   }
 
   Map<String, Object?> toFirestore() {
@@ -126,8 +123,6 @@ class Aluno {
   final Map<String, PagamentoMensal> pagamentos;
   final bool ativo;
   final DateTime? arquivadoEm;
-
-  // Compatibilidade com documentos antigos que tinham apenas o bool pago.
   final bool? pagoLegado;
 
   static String competenciaAtual([DateTime? now]) {
@@ -221,78 +216,6 @@ class Aluno {
       pagoLegado: pagoLegado ?? this.pagoLegado,
     );
   }
-
-  /// Atualiza somente campos editáveis do cadastro do aluno.
-  Map<String, Object?> toFirestoreUpdate() {
-    return {
-      'nome': nome,
-      'telefone': telefone,
-      'observacao': observacao,
-      'diaVencimento': diaVencimento,
-      'mensalidade': mensalidade,
-    };
-  }
-
-  Map<String, Object?> toFirestoreCreate() {
-    return {
-      ...toFirestoreUpdate(),
-      'criadoEm': FieldValue.serverTimestamp(),
-      'ativo': ativo,
-      'arquivadoEm': arquivadoEm == null
-          ? null
-          : Timestamp.fromDate(arquivadoEm!),
-      'pagamentos': {
-        for (final entry in pagamentos.entries)
-          entry.key: entry.value.toFirestore(),
-      },
-    };
-  }
-
-  static Aluno fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data() ?? <String, dynamic>{};
-    final criado = data['criadoEm'];
-    final arquivado = data['arquivadoEm'];
-    final diaVencimento = _parseDia(data['diaVencimento'], 1);
-    final mensalidade = _parseDouble(data['mensalidade'], 0);
-
-    final pagamentos = <String, PagamentoMensal>{};
-    final rawPagamentos = data['pagamentos'];
-    if (rawPagamentos is Map) {
-      for (final entry in rawPagamentos.entries) {
-        final key = entry.key.toString();
-        final value = entry.value;
-        if (value is Map<String, dynamic>) {
-          pagamentos[key] = PagamentoMensal.fromMap(
-            key,
-            value,
-            fallbackValor: mensalidade,
-            fallbackDiaVencimento: diaVencimento,
-          );
-        } else if (value is Map) {
-          pagamentos[key] = PagamentoMensal.fromMap(
-            key,
-            Map<String, dynamic>.from(value),
-            fallbackValor: mensalidade,
-            fallbackDiaVencimento: diaVencimento,
-          );
-        }
-      }
-    }
-
-    return Aluno(
-      id: doc.id,
-      nome: (data['nome'] ?? '') as String,
-      telefone: (data['telefone'] ?? '') as String,
-      observacao: ((data['observacao'] ?? '') as String).trim(),
-      diaVencimento: diaVencimento,
-      mensalidade: mensalidade,
-      criadoEm: (criado is Timestamp) ? criado.toDate() : DateTime.now(),
-      pagamentos: pagamentos,
-      ativo: data['ativo'] as bool? ?? true,
-      arquivadoEm: arquivado is Timestamp ? arquivado.toDate() : null,
-      pagoLegado: data['pago'] as bool?,
-    );
-  }
 }
 
 bool _isVencimentoEmAtraso(DateTime referenceDate, int diaVencimento) {
@@ -328,4 +251,3 @@ double _parseDouble(dynamic value, double fallback) {
   }
   return fallback;
 }
-

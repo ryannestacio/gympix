@@ -151,7 +151,7 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
               ),
             ),
             const SizedBox(height: AppTheme.spacingLg),
-            _SectionHeader(title: 'Aparência', icon: Icons.palette_outlined),
+            const _SectionHeader(title: 'Aparência', icon: Icons.palette_outlined),
             const SizedBox(height: AppTheme.spacingSm),
             _SectionCard(
               child: Column(
@@ -200,7 +200,7 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
               ),
             ),
             const SizedBox(height: AppTheme.spacingLg),
-            _SectionHeader(title: 'Pagamentos', icon: Icons.payment_outlined),
+            const _SectionHeader(title: 'Pagamentos', icon: Icons.payment_outlined),
             const SizedBox(height: AppTheme.spacingSm),
             _SectionCard(
               child: Column(
@@ -267,7 +267,7 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
               ),
             ),
             const SizedBox(height: AppTheme.spacingMd + 4),
-            _SectionHeader(title: 'Valores', icon: Icons.attach_money_rounded),
+            const _SectionHeader(title: 'Valores', icon: Icons.attach_money_rounded),
             const SizedBox(height: AppTheme.spacingSm),
             _SectionCard(
               child: Column(
@@ -343,7 +343,7 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
               ),
             ),
             const SizedBox(height: AppTheme.spacingMd + 4),
-            _SectionHeader(title: 'Mensagens', icon: Icons.message_outlined),
+            const _SectionHeader(title: 'Mensagens', icon: Icons.message_outlined),
             const SizedBox(height: AppTheme.spacingSm),
             _SectionCard(
               child: Column(
@@ -391,7 +391,7 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
               ),
             ),
             const SizedBox(height: AppTheme.spacingMd + 4),
-            _SectionHeader(
+            const _SectionHeader(
               title: 'Regua de cobranca',
               icon: Icons.schedule_send_outlined,
             ),
@@ -497,7 +497,7 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
               ),
             ),
             const SizedBox(height: AppTheme.spacingLg),
-            _SectionHeader(title: 'Sistema', icon: Icons.info_outline_rounded),
+            const _SectionHeader(title: 'Sistema', icon: Icons.info_outline_rounded),
             const SizedBox(height: AppTheme.spacingSm),
             _SectionCard(
               child: Column(

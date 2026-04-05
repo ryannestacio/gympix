@@ -27,7 +27,7 @@ void main() {
       role: TenantRole.owner,
     );
 
-    final report = CompetenciaReportData(
+    const report = CompetenciaReportData(
       competencia: '2026-03',
       totais: const CompetenciaReportTotals(
         totalAlunos: 0,

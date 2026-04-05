@@ -17,7 +17,7 @@ class BrlCurrencyInputFormatter extends TextInputFormatter {
   ) {
     final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
     if (digits.isEmpty) {
-      return const TextEditingValue(text: '');
+      return TextEditingValue.empty;
     }
 
     final value = int.parse(digits) / 100;
