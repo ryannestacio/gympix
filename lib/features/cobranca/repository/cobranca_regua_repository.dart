@@ -1,13 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/utils/firestore_retry_policy.dart';
 import '../../alunos/models/aluno.dart';
 import '../models/cobranca_envio.dart';
 import '../models/cobranca_regua.dart';
 
 class CobrancaReguaRepository {
-  CobrancaReguaRepository(this._db, this._tenantId);
+  CobrancaReguaRepository(
+    this._db,
+    this._tenantId, {
+    RetryPolicy? retryPolicy,
+  }) : _retryPolicy = retryPolicy ?? RetryPolicy.critical;
+
   final FirebaseFirestore _db;
   final String _tenantId;
+  final RetryPolicy _retryPolicy;
 
   DocumentReference<Map<String, dynamic>> get _tenantDoc =>
       _db.collection('tenants').doc(_tenantId);
@@ -52,10 +59,12 @@ class CobrancaReguaRepository {
     return CobrancaReguaConfig.defaults;
   }
 
-  Future<void> setReguaConfig(CobrancaReguaConfig config) async {
-    await _appDoc.set({
-      'cobrancaRegua': config.toMap(),
-    }, SetOptions(merge: true));
+  Future<void> setReguaConfig(CobrancaReguaConfig config) {
+    return _retryPolicy.execute(
+      () => _appDoc.set({
+        'cobrancaRegua': config.toMap(),
+      }, SetOptions(merge: true)),
+    );
   }
 
   Stream<List<CobrancaEnvio>> watchEnviosAluno(
@@ -73,12 +82,14 @@ class CobrancaReguaRepository {
         });
   }
 
-  Future<void> registrarEnvio(CobrancaEnvio envio, {String? customId}) async {
+  Future<void> registrarEnvio(CobrancaEnvio envio, {String? customId}) {
     final docId = customId ?? _enviosCol(envio.alunoId).doc().id;
-    await _enviosCol(envio.alunoId).doc(docId).set({
-      ...envio.toMap(),
-      'enviadoEm': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    return _retryPolicy.execute(
+      () => _enviosCol(envio.alunoId).doc(docId).set({
+        ...envio.toMap(),
+        'enviadoEm': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true)),
+    );
   }
 
   Future<bool> hasAutomacaoRegistro({
@@ -96,12 +107,14 @@ class CobrancaReguaRepository {
     return doc.exists;
   }
 
-  Future<void> enqueuePush(CobrancaEnvio envio) async {
-    await _pushQueueCol.add({
-      ...envio.toMap(),
-      'filaStatus': 'pendente',
-      'criadoEm': FieldValue.serverTimestamp(),
-    });
+  Future<void> enqueuePush(CobrancaEnvio envio) {
+    return _retryPolicy.execute(
+      () => _pushQueueCol.add({
+        ...envio.toMap(),
+        'filaStatus': 'pendente',
+        'criadoEm': FieldValue.serverTimestamp(),
+      }),
+    );
   }
 
   static String buildAutomacaoDocId({

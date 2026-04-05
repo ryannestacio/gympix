@@ -1,12 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/utils/firestore_retry_policy.dart';
 import '../models/competencia_report.dart';
 
 class CompetenciaFechamentoRepository {
-  CompetenciaFechamentoRepository(this._db, this._tenantId);
+  CompetenciaFechamentoRepository(
+    this._db,
+    this._tenantId, {
+    RetryPolicy? retryPolicy,
+  }) : _retryPolicy = retryPolicy ?? RetryPolicy.critical;
 
   final FirebaseFirestore _db;
   final String _tenantId;
+  final RetryPolicy _retryPolicy;
 
   DocumentReference<Map<String, dynamic>> get _tenantDoc =>
       _db.collection('tenants').doc(_tenantId);
@@ -29,7 +35,9 @@ class CompetenciaFechamentoRepository {
     return CompetenciaReportData.fromFirestore(data);
   }
 
-  Future<void> salvarFechamento(CompetenciaReportData report) async {
-    await _col.doc(report.competencia).set(report.toFirestore());
+  Future<void> salvarFechamento(CompetenciaReportData report) {
+    return _retryPolicy.execute(
+      () => _col.doc(report.competencia).set(report.toFirestore()),
+    );
   }
 }

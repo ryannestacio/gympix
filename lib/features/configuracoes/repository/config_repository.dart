@@ -1,11 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/utils/firestore_retry_policy.dart';
 import '../../cobranca/models/cobranca_regua.dart';
 
 class ConfigRepository {
-  ConfigRepository(this._db, this._tenantId);
+  ConfigRepository(
+    this._db,
+    this._tenantId, {
+    RetryPolicy? retryPolicy,
+  }) : _retryPolicy = retryPolicy ?? RetryPolicy.standard;
+
   final FirebaseFirestore _db;
   final String _tenantId;
+  final RetryPolicy _retryPolicy;
 
   DocumentReference<Map<String, dynamic>> get _tenantDoc =>
       _db.collection('tenants').doc(_tenantId);
@@ -33,8 +40,10 @@ class ConfigRepository {
     return null;
   }
 
-  Future<void> setPixCode(String pixCode) async {
-    await _pixDoc.set({'pixCode': pixCode.trim()}, SetOptions(merge: true));
+  Future<void> setPixCode(String pixCode) {
+    return _retryPolicy.execute(
+      () => _pixDoc.set({'pixCode': pixCode.trim()}, SetOptions(merge: true)),
+    );
   }
 
   Stream<double?> watchDefaultMensalidade() {
@@ -46,8 +55,10 @@ class ConfigRepository {
     });
   }
 
-  Future<void> setDefaultMensalidade(double value) async {
-    await _appDoc.set({'defaultMensalidade': value}, SetOptions(merge: true));
+  Future<void> setDefaultMensalidade(double value) {
+    return _retryPolicy.execute(
+      () => _appDoc.set({'defaultMensalidade': value}, SetOptions(merge: true)),
+    );
   }
 
   Stream<String?> watchCustomCobrancaMessage() {
@@ -71,10 +82,13 @@ class ConfigRepository {
     return null;
   }
 
-  Future<void> setCustomCobrancaMessage(String value) async {
-    await _appDoc.set({
-      'customCobrancaMessage': value.trim(),
-    }, SetOptions(merge: true));
+  Future<void> setCustomCobrancaMessage(String value) {
+    return _retryPolicy.execute(
+      () => _appDoc.set(
+        {'customCobrancaMessage': value.trim()},
+        SetOptions(merge: true),
+      ),
+    );
   }
 
   Stream<CobrancaReguaConfig> watchCobrancaReguaConfig() {
@@ -104,9 +118,11 @@ class ConfigRepository {
     return CobrancaReguaConfig.defaults;
   }
 
-  Future<void> setCobrancaReguaConfig(CobrancaReguaConfig config) async {
-    await _appDoc.set({
-      'cobrancaRegua': config.toMap(),
-    }, SetOptions(merge: true));
+  Future<void> setCobrancaReguaConfig(CobrancaReguaConfig config) {
+    return _retryPolicy.execute(
+      () => _appDoc.set({
+        'cobrancaRegua': config.toMap(),
+      }, SetOptions(merge: true)),
+    );
   }
 }

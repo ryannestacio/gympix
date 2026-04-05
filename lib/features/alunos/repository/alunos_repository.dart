@@ -1,11 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/utils/firestore_retry_policy.dart';
 import '../models/aluno.dart';
 
 class AlunosRepository {
-  AlunosRepository(this._db, this._tenantId);
+  AlunosRepository(
+    this._db,
+    this._tenantId, {
+    RetryPolicy? retryPolicy,
+  }) : _retryPolicy = retryPolicy ?? RetryPolicy.critical;
+
   final FirebaseFirestore _db;
   final String _tenantId;
+  final RetryPolicy _retryPolicy;
 
   DocumentReference<Map<String, dynamic>> get _tenantDoc =>
       _db.collection('tenants').doc(_tenantId);
@@ -40,7 +47,7 @@ class AlunosRepository {
     required int diaVencimento,
     required double mensalidade,
     required bool pago,
-  }) async {
+  }) {
     final competencia = Aluno.competenciaAtual();
     final now = DateTime.now();
     final diaVencimentoEfetivo = Aluno.diaVencimentoEfetivo(diaVencimento, now);
@@ -70,35 +77,39 @@ class AlunosRepository {
       pagoLegado: null,
     );
 
-    await _col.add(novo.toFirestoreCreate());
+    return _retryPolicy.execute(() => _col.add(novo.toFirestoreCreate()));
   }
 
-  Future<void> updateAluno(Aluno aluno) async {
-    await _col.doc(aluno.id).update(aluno.toFirestoreUpdate());
+  Future<void> updateAluno(Aluno aluno) {
+    final data = aluno.toFirestoreUpdate();
+    return _retryPolicy.execute(() => _col.doc(aluno.id).update(data));
   }
 
-  Future<void> syncPagamentoDoMesAtual(Aluno aluno) async {
+  Future<void> syncPagamentoDoMesAtual(Aluno aluno) {
     final competencia = Aluno.competenciaAtual();
     final pagamento = aluno.pagamentoDoMesSincronizadoComCadastro();
-
-    await _col.doc(aluno.id).update({
+    final data = {
       'pagamentos.$competencia': {
         ...pagamento.toFirestore(),
         'atualizadoEm': FieldValue.serverTimestamp(),
       },
       'pago': pagamento.pago,
-    });
+    };
+    return _retryPolicy.execute(() => _col.doc(aluno.id).update(data));
   }
 
-  Future<void> archiveAluno(String id) async {
-    await _col.doc(id).update({
+  Future<void> archiveAluno(String id) {
+    return _retryPolicy.execute(() => _col.doc(id).update({
       'ativo': false,
       'arquivadoEm': FieldValue.serverTimestamp(),
-    });
+    }));
   }
 
-  Future<void> unarchiveAluno(String id) async {
-    await _col.doc(id).update({'ativo': true, 'arquivadoEm': null});
+  Future<void> unarchiveAluno(String id) {
+    return _retryPolicy.execute(() => _col.doc(id).update({
+      'ativo': true,
+      'arquivadoEm': null,
+    }));
   }
 
   Future<void> setPago({
@@ -108,7 +119,7 @@ class AlunosRepository {
     String? comprovanteUrl,
     String? observacao,
     DateTime? pagoEm,
-  }) async {
+  }) {
     final competencia = Aluno.competenciaAtual();
     final now = DateTime.now();
     final valorMensal =
@@ -133,12 +144,13 @@ class AlunosRepository {
       observacao: pago ? observacao?.trim() : null,
     );
 
-    await _col.doc(aluno.id).update({
+    final data = {
       'pagamentos.$competencia': {
         ...pagamento.toFirestore(),
         'atualizadoEm': FieldValue.serverTimestamp(),
       },
       'pago': pago,
-    });
+    };
+    return _retryPolicy.execute(() => _col.doc(aluno.id).update(data));
   }
 }
