@@ -4,7 +4,8 @@
       "Bash(flutter analyze:*)",
       "Bash(flutter test:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(echo \"EXIT CODE: $?\")"
     ]
   }
 }

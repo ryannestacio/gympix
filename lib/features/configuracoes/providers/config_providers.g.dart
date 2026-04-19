@@ -163,3 +163,45 @@ final class CobrancaReguaConfigStreamProvider
 
 String _$cobrancaReguaConfigStreamHash() =>
     r'b82b195e1958268f2b5a774e18cb051f2316137f';
+
+@ProviderFor(inadimplenciaConfigStream)
+const inadimplenciaConfigStreamProvider = InadimplenciaConfigStreamProvider._();
+
+final class InadimplenciaConfigStreamProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<InadimplenciaConfig>,
+          InadimplenciaConfig,
+          Stream<InadimplenciaConfig>
+        >
+    with
+        $FutureModifier<InadimplenciaConfig>,
+        $StreamProvider<InadimplenciaConfig> {
+  const InadimplenciaConfigStreamProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'inadimplenciaConfigStreamProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$inadimplenciaConfigStreamHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<InadimplenciaConfig> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<InadimplenciaConfig> create(Ref ref) {
+    return inadimplenciaConfigStream(ref);
+  }
+}
+
+String _$inadimplenciaConfigStreamHash() =>
+    r'cd73eb30ae7e83932aa34238621590712bab3df0';

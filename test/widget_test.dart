@@ -29,7 +29,7 @@ void main() {
 
     const report = CompetenciaReportData(
       competencia: '2026-03',
-      totais: const CompetenciaReportTotals(
+      totais: CompetenciaReportTotals(
         totalAlunos: 0,
         pendentes: 0,
         atrasados: 0,
@@ -37,7 +37,7 @@ void main() {
         previstoMes: 0,
         inadimplenciaPercent: 0,
       ),
-      alunosSnapshot: const [],
+      alunosSnapshot: [],
     );
 
     await tester.pumpWidget(

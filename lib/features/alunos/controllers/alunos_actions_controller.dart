@@ -27,7 +27,6 @@ final alunosActionsControllerProvider = Provider<AlunosActionsController>((
       pixPayloadService: const PixPayloadService(),
     ),
     buildCobrancaMensagemUseCase: BuildCobrancaMensagemUseCase(
-      configReader: ConfigRepositoryCobrancaMessageReader(configRepository),
       cobrancaService: CobrancaService(),
     ),
     repository: alunosRepository,
@@ -98,6 +97,14 @@ class AlunosActionsController {
       operationId ??
           'aluno:pagamento:desfazer:${aluno.id}:${Aluno.competenciaAtual()}',
       () => _repository.setPago(aluno: aluno, pago: false),
+    );
+  }
+
+  Future<void> quitarPendenciasAcumuladas(Aluno aluno, {String? operationId}) {
+    return _runLocked(
+      operationId ??
+          'aluno:pagamento:quitar-acumulado:${aluno.id}:${Aluno.competenciaAtual()}',
+      () => _repository.quitarPendenciasAcumuladas(aluno: aluno),
     );
   }
 

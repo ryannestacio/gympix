@@ -15,7 +15,12 @@ class CompetenciaReportItem {
   });
 
   factory CompetenciaReportItem.fromAluno(Aluno aluno, DateTime referencia) {
-    final pagamento = aluno.pagamentoDoMes(referencia);
+    final competencia = Aluno.competenciaAtual(referencia);
+    final referenciaStatus = Aluno.referenciaStatusDaCompetencia(referencia);
+    final pagamento = aluno.pagamentoDaCompetencia(
+      competencia,
+      referenciaStatus: referenciaStatus,
+    );
     return CompetenciaReportItem(
       alunoId: aluno.id,
       nome: aluno.nome,
@@ -31,7 +36,8 @@ class CompetenciaReportItem {
   }
 
   factory CompetenciaReportItem.fromMap(Map<String, dynamic> map) {
-    final statusName = map['status'] as String? ?? PagamentoStatus.pendente.name;
+    final statusName =
+        map['status'] as String? ?? PagamentoStatus.pendente.name;
     final status = PagamentoStatus.values.firstWhere(
       (value) => value.name == statusName,
       orElse: () => PagamentoStatus.pendente,
@@ -105,7 +111,17 @@ class CompetenciaReportTotals {
     List<Aluno> alunos,
     DateTime referencia,
   ) {
-    final pagamentosMes = alunos.map((a) => a.pagamentoDoMes(referencia)).toList();
+    final competencia = Aluno.competenciaAtual(referencia);
+    final referenciaStatus = Aluno.referenciaStatusDaCompetencia(referencia);
+    final ativos = alunos.where((a) => a.ativo).toList();
+    final pagamentosMes = ativos
+        .map(
+          (a) => a.pagamentoDaCompetencia(
+            competencia,
+            referenciaStatus: referenciaStatus,
+          ),
+        )
+        .toList();
 
     final pendentes = pagamentosMes
         .where((p) => p.status == PagamentoStatus.pendente)
@@ -118,12 +134,12 @@ class CompetenciaReportTotals {
         .fold<double>(0, (s, p) => s + p.valor);
     final previstoMes = pagamentosMes.fold<double>(0, (s, p) => s + p.valor);
     final totalNaoPago = pendentes + atrasados;
-    final inadimplenciaPercent = alunos.isEmpty
+    final inadimplenciaPercent = ativos.isEmpty
         ? 0.0
-        : (totalNaoPago / alunos.length) * 100.0;
+        : (totalNaoPago / ativos.length) * 100.0;
 
     return CompetenciaReportTotals(
-      totalAlunos: alunos.length,
+      totalAlunos: ativos.length,
       pendentes: pendentes,
       atrasados: atrasados,
       recebidoMes: recebidoMes,
@@ -179,10 +195,13 @@ class CompetenciaReportData {
     required List<Aluno> alunosFechamento,
   }) {
     final competencia = Aluno.competenciaAtual(referencia);
-    final itens = alunosFechamento
-        .map((aluno) => CompetenciaReportItem.fromAluno(aluno, referencia))
-        .toList()
-      ..sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
+    final itens =
+        alunosFechamento
+            .map((aluno) => CompetenciaReportItem.fromAluno(aluno, referencia))
+            .toList()
+          ..sort(
+            (a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()),
+          );
 
     return CompetenciaReportData(
       competencia: competencia,
@@ -200,7 +219,9 @@ class CompetenciaReportData {
         if (item is Map<String, dynamic>) {
           itens.add(CompetenciaReportItem.fromMap(item));
         } else if (item is Map) {
-          itens.add(CompetenciaReportItem.fromMap(Map<String, dynamic>.from(item)));
+          itens.add(
+            CompetenciaReportItem.fromMap(Map<String, dynamic>.from(item)),
+          );
         }
       }
     }

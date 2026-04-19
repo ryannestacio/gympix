@@ -39,7 +39,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final authAction = ref.watch(authControllerProvider);
-    final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
     ref.listen(authControllerProvider, (previous, next) {
@@ -64,27 +63,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      SizedBox(
-                        height: 110,
-                        child: Image.asset(
-                          'assets/images/logo-gympix-colorida.png',
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingLg),
                       Text(
-                        'Entrar na sua conta',
+                        'Acessar conta',
                         textAlign: TextAlign.center,
                         style: textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: AppTheme.spacingXs),
-                      Text(
-                        'Use seu email e senha para acessar os dados da academia.',
-                        textAlign: TextAlign.center,
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: AppTheme.spacingLg),

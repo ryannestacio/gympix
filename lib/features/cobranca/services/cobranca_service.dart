@@ -1,4 +1,4 @@
-﻿import 'package:intl/intl.dart';
+import 'package:intl/intl.dart';
 
 import '../../alunos/models/aluno.dart';
 
@@ -6,7 +6,6 @@ class CobrancaService {
   String buildMensagemLembrete({
     required Aluno aluno,
     required String pixCode,
-    String? customPhrase,
     DateTime? now,
   }) {
     final referenceDate = now ?? DateTime.now();
@@ -23,17 +22,13 @@ class CobrancaService {
       referencia: referenceDate,
       competencia: competencia,
     );
-    final customBlock = (customPhrase ?? '').trim().isEmpty
-        ? ''
-        : '\n${customPhrase!.trim()}\n';
-
     return '$cabecalho\n\n'
         'Aluno: ${aluno.nome}\n'
         'Vencimento: dia $vencimento\n'
         'Valor: $valor\n'
         'Forma de pagamento: Pix\n'
         'Competencia: $competencia\n'
-        '$customBlock\n'
+        '\n'
         'Enviei o QR Code em anexo para facilitar o pagamento.\n'
         'Se preferir, voce tambem pode usar o Pix copia e cola abaixo:\n'
         '$pixCode\n\n'
@@ -57,10 +52,7 @@ class CobrancaService {
     }
 
     final diasRestantes = aluno.diaVencimento - referencia.day;
-    final diasTexto = diasRestantes == 1
-        ? '1 dia'
-        : '$diasRestantes dias';
+    final diasTexto = diasRestantes == 1 ? '1 dia' : '$diasRestantes dias';
     return 'Ola, ${aluno.nome}! Estamos enviando sua cobranca de forma antecipada para facilitar sua organizacao. A mensalidade da academia referente a $competencia vence em $diasTexto, no dia ${aluno.diaVencimento.toString().padLeft(2, '0')}.';
   }
 }
-

@@ -10,16 +10,16 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/domain/inadimplencia_config.dart';
+import '../../../../core/domain/inadimplencia_status.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_theme_extensions.dart';
-import '../../../cobranca/models/cobranca_envio.dart';
-import '../../../cobranca/providers/cobranca_regua_providers.dart';
+import '../../../configuracoes/providers/config_providers.dart';
 import '../../controllers/alunos_actions_controller.dart';
 import '../../models/aluno.dart';
 import '../../services/telefone_whatsapp_service.dart';
 import '../../usecases/aluno_cadastro_input.dart';
 import '../aluno_form_sheet.dart';
-import 'aluno_cobranca_panel_sheet.dart';
 import 'aluno_history_sheet.dart';
 
 class AlunoCard extends ConsumerStatefulWidget {
@@ -81,13 +81,18 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
     return _currencyFormatter.format(value);
   }
 
-  static Color _statusColor(PagamentoMensal pagamento, BuildContext context) {
+  static Color _inadimplenciaColor(
+    InadimplenciaStatus status,
+    BuildContext context,
+  ) {
     final ext = AppThemeExtensions.of(context);
-    if (pagamento.pago) return ext.success;
-    if (pagamento.status == PagamentoStatus.atrasado) {
-      return Theme.of(context).colorScheme.error;
-    }
-    return ext.warning;
+    return switch (status) {
+      InadimplenciaStatus.emDia => ext.success,
+      InadimplenciaStatus.aVencer => ext.info,
+      InadimplenciaStatus.venceHoje => ext.warning,
+      InadimplenciaStatus.emAtraso => ext.warning,
+      InadimplenciaStatus.inadimplente => Theme.of(context).colorScheme.error,
+    };
   }
 
   @override
@@ -100,10 +105,29 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final pagamentoAtual = aluno.pagamentoDoMes();
-    final mensalidadeLabel = _formatCurrency(pagamentoAtual.valor);
-    final statusColor = _statusColor(pagamentoAtual, context);
+    final configAsync = ref.watch(inadimplenciaConfigStreamProvider);
+    final config = configAsync.value ?? InadimplenciaConfig.defaults;
+    final resultado = aluno.inadimplencia(config: config);
+    final mensalidadeLabel = _formatCurrency(
+      resultado.pagamentoEncontrado?.valor ?? aluno.mensalidade,
+    );
+    final statusColor = _inadimplenciaColor(resultado.status, context);
+    final statusLabelText = resultado.status.detailedLabel(
+      diasRestantes: resultado.diasRestantes,
+      diasAtraso: resultado.diasAtraso,
+    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final referencia = DateTime.now();
+    final referenciaStatus = Aluno.referenciaStatusDaCompetencia(referencia);
+    final competenciasEmAberto = aluno.totalCompetenciasEmAbertoAte(
+      referencia,
+      referenciaStatus: referenciaStatus,
+    );
+    final valorEmAberto = aluno.valorEmAbertoAte(
+      referencia,
+      referenciaStatus: referenciaStatus,
+    );
+    final mostrarQuitarPendencias = competenciasEmAberto > 1;
 
     return Container(
       padding: const EdgeInsets.all(AppTheme.spacingLg - 4),
@@ -146,7 +170,6 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
                   if (v == 'inativar') await _onInativar();
                   if (v == 'ativar') await _onAtivar();
                   if (v == 'historico') _abrirHistorico();
-                  if (v == 'painel_cobranca') await _abrirPainelCobranca();
                   if (v == 'lembrete') await _enviarLembrete();
                 },
                 itemBuilder: (context) => [
@@ -177,16 +200,6 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
                         Icon(Icons.history_rounded, size: 20),
                         SizedBox(width: 12),
                         Text('Historico mensal'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'painel_cobranca',
-                    child: Row(
-                      children: [
-                        Icon(Icons.view_timeline_rounded, size: 20),
-                        SizedBox(width: 12),
-                        Text('Painel de cobranca'),
                       ],
                     ),
                   ),
@@ -255,7 +268,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
               borderRadius: BorderRadius.circular(AppTheme.radiusSm),
             ),
             child: Text(
-              pagamentoAtual.statusLabel.toUpperCase(),
+              statusLabelText.toUpperCase(),
               style: textTheme.labelSmall?.copyWith(
                 color: statusColor,
                 fontWeight: FontWeight.w700,
@@ -392,60 +405,95 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
                             : Text(aluno.pago ? 'Desfazer' : 'Marcar pago'),
                       ),
                     ),
+                    if (mostrarQuitarPendencias) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _busy
+                              ? null
+                              : _onQuitarPendenciasAcumuladas,
+                          icon: const Icon(Icons.done_all_rounded, size: 18),
+                          label: Text(
+                            'Quitar ${_formatCurrency(valorEmAberto)}',
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 );
               }
 
-              return Row(
+              return Column(
                 children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _busy ? null : _onCobrar,
-                      icon: const Icon(Icons.qr_code_2_outlined, size: 18),
-                      label: const Text('Cobrar'),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: _busy ? null : _onCobrar,
+                          icon: const Icon(Icons.qr_code_2_outlined, size: 18),
+                          label: const Text('Cobrar'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed:
+                              _busy ||
+                                  !temTelefoneWhatsAppValido(aluno.telefone)
+                              ? null
+                              : _onWhatsApp,
+                          icon: const Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 18,
+                          ),
+                          label: const Text('WhatsApp'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _busy ? null : _onEditar,
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: const Text('Editar'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton.tonal(
+                          onPressed: _busy ? null : _onTogglePago,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          child: _busy
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(aluno.pago ? 'Desfazer' : 'Marcar pago'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (mostrarQuitarPendencias) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _busy ? null : _onQuitarPendenciasAcumuladas,
+                        icon: const Icon(Icons.done_all_rounded, size: 18),
+                        label: Text(
+                          'Quitar $competenciasEmAberto pendencias (${_formatCurrency(valorEmAberto)})',
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed:
-                          _busy || !temTelefoneWhatsAppValido(aluno.telefone)
-                          ? null
-                          : _onWhatsApp,
-                      icon: const Icon(
-                        Icons.chat_bubble_outline_rounded,
-                        size: 18,
-                      ),
-                      label: const Text('WhatsApp'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _busy ? null : _onEditar,
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('Editar'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton.tonal(
-                      onPressed: _busy ? null : _onTogglePago,
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                      child: _busy
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(aluno.pago ? 'Desfazer' : 'Marcar pago'),
-                    ),
-                  ),
+                  ],
                 ],
               );
             },
@@ -745,11 +793,6 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
                 OutlinedButton.icon(
                   onPressed: () async {
                     await Clipboard.setData(ClipboardData(text: lembrete));
-                    await _registrarEnvioManual(
-                      canal: CobrancaCanal.manualCopia,
-                      mensagem: lembrete,
-                      pixPayload: pixPayload,
-                    );
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Cobranca copiada.')),
@@ -777,11 +820,6 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
 
     final mensagem = await _buildMensagemCobranca(pixPayload);
     await Clipboard.setData(ClipboardData(text: mensagem));
-    await _registrarEnvioManual(
-      canal: CobrancaCanal.manualCopia,
-      mensagem: mensagem,
-      pixPayload: pixPayload,
-    );
     if (!mounted) return;
     _showCardFeedback(
       'Cobranca copiada',
@@ -856,6 +894,60 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       pendingMessage:
           'Pagamento registrado localmente. A sincronizacao pode levar alguns segundos.',
       cardMessage: 'Pagamento registrado',
+    );
+  }
+
+  Future<void> _onQuitarPendenciasAcumuladas() async {
+    final referencia = DateTime.now();
+    final referenciaStatus = Aluno.referenciaStatusDaCompetencia(referencia);
+    final totalPendencias = aluno.totalCompetenciasEmAbertoAte(
+      referencia,
+      referenciaStatus: referenciaStatus,
+    );
+    if (totalPendencias <= 1) return;
+
+    final valorTotal = aluno.valorEmAbertoAte(
+      referencia,
+      referenciaStatus: referenciaStatus,
+    );
+    final competenciaLabel = totalPendencias == 1
+        ? 'competencia'
+        : 'competencias';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Quitar pendencias acumuladas'),
+        content: Text(
+          'Quitar $totalPendencias $competenciaLabel em aberto de ${aluno.nome} (${_formatCurrency(valorTotal)})?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Quitar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    final operationId =
+        'aluno:${aluno.id}:pagamento:quitar-acumulado:${Aluno.competenciaAtual(referencia)}';
+    await _runGuarded(
+      () async {
+        await ref
+            .read(alunosActionsControllerProvider)
+            .quitarPendenciasAcumuladas(aluno, operationId: operationId);
+      },
+      operationId: operationId,
+      successMessage:
+          '$totalPendencias $competenciaLabel quitadas com sucesso.',
+      pendingMessage:
+          'Quitacao enviada. A sincronizacao pode levar alguns segundos.',
+      cardMessage: '$totalPendencias $competenciaLabel quitadas',
     );
   }
 
@@ -989,55 +1081,6 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       showDragHandle: true,
       builder: (context) => HistoricoAlunoSheet(aluno: aluno),
     );
-  }
-
-  Future<void> _abrirPainelCobranca() {
-    return AlunoCobrancaPanelSheet.show(context, aluno: aluno);
-  }
-
-  Future<void> _registrarEnvioManual({
-    required CobrancaCanal canal,
-    required String mensagem,
-    required String pixPayload,
-  }) async {
-    try {
-      final agora = DateTime.now();
-      final pagamento = aluno.pagamentoDoMes(agora);
-      final competencia = Aluno.competenciaAtual(agora);
-      final vencimento = Aluno.dataVencimento(aluno.diaVencimento, agora);
-      final diasRelativos = _dateOnly(agora).difference(_dateOnly(vencimento)).inDays;
-      final reguaConfig = await ref
-          .read(cobrancaReguaRepositoryProvider)
-          .getReguaConfig();
-      final cobrancaLink = ref
-          .read(cobrancaReguaAutomationServiceProvider)
-          .buildCobrancaLink(
-            baseUrl: reguaConfig.linkBaseUrl,
-            aluno: aluno,
-            valor: pagamento.valor,
-            pixPayload: pixPayload,
-          );
-      final envio = CobrancaEnvio(
-        alunoId: aluno.id,
-        competencia: competencia,
-        status: pagamento.status,
-        diasRelativos: diasRelativos,
-        canal: canal,
-        automatico: false,
-        mensagem: mensagem,
-        enviadoEm: agora,
-        templateUsado: null,
-        pixPayload: pixPayload,
-        cobrancaLink: cobrancaLink,
-      );
-      await ref.read(cobrancaReguaRepositoryProvider).registrarEnvio(envio);
-    } catch (_) {
-      // Registro de rastreabilidade nao deve bloquear a acao principal.
-    }
-  }
-
-  DateTime _dateOnly(DateTime value) {
-    return DateTime(value.year, value.month, value.day);
   }
 
   Future<String?> _buildPixPayloadOrShowError({
@@ -1261,11 +1304,6 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
           text: message,
           subject: 'Cobranca Pix - ${aluno.nome}',
         ),
-      );
-      await _registrarEnvioManual(
-        canal: CobrancaCanal.manualCompartilhamento,
-        mensagem: message,
-        pixPayload: pixPayload,
       );
     } catch (_) {
       if (!mounted) return;

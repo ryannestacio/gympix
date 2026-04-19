@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/domain/inadimplencia_config.dart';
 import '../../../core/providers/firebase_providers.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../cobranca/models/cobranca_regua.dart';
@@ -29,4 +30,9 @@ Stream<double?> defaultMensalidadeStream(Ref ref) {
 @riverpod
 Stream<CobrancaReguaConfig> cobrancaReguaConfigStream(Ref ref) {
   return ref.watch(configRepositoryProvider).watchCobrancaReguaConfig();
+}
+
+@riverpod
+Stream<InadimplenciaConfig> inadimplenciaConfigStream(Ref ref) {
+  return ref.watch(configRepositoryProvider).watchInadimplenciaConfig();
 }

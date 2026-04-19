@@ -9,53 +9,59 @@ import 'package:gympix/features/cobranca/services/pix_payload_service.dart';
 
 void main() {
   group('SalvarAlunoUseCase', () {
-    test('quando pago muda, sincroniza via setPago e nao faz sync do mes', () async {
-      final repo = _FakeAlunosWriteRepository();
-      final useCase = SalvarAlunoUseCase(repo);
-      final original = _buildAlunoBase();
+    test(
+      'quando pago muda, sincroniza via setPago e nao faz sync do mes',
+      () async {
+        final repo = _FakeAlunosWriteRepository();
+        final useCase = SalvarAlunoUseCase(repo);
+        final original = _buildAlunoBase();
 
-      await useCase.atualizar(
-        original: original,
-        input: const AlunoCadastroInput(
-          nome: 'Aluno Editado',
-          telefone: '(11) 99999-9999',
-          observacao: 'obs',
-          diaVencimento: 12,
-          mensalidade: 120,
-          pago: true,
-        ),
-      );
+        await useCase.atualizar(
+          original: original,
+          input: const AlunoCadastroInput(
+            nome: 'Aluno Editado',
+            telefone: '(11) 99999-9999',
+            observacao: 'obs',
+            diaVencimento: 12,
+            mensalidade: 120,
+            pago: true,
+          ),
+        );
 
-      expect(repo.updateCalls, 1);
-      expect(repo.setPagoCalls, 1);
-      expect(repo.syncCalls, 0);
-      expect(repo.lastSetPagoValue, isTrue);
-      expect(repo.updatedAluno?.nome, 'Aluno Editado');
-    });
+        expect(repo.updateCalls, 1);
+        expect(repo.setPagoCalls, 1);
+        expect(repo.syncCalls, 0);
+        expect(repo.lastSetPagoValue, isTrue);
+        expect(repo.updatedAluno?.nome, 'Aluno Editado');
+      },
+    );
 
-    test('quando mensalidade/vencimento mudam sem alterar pago, faz sync do mes', () async {
-      final repo = _FakeAlunosWriteRepository();
-      final useCase = SalvarAlunoUseCase(repo);
-      final original = _buildAlunoBase();
+    test(
+      'quando mensalidade/vencimento mudam sem alterar pago, faz sync do mes',
+      () async {
+        final repo = _FakeAlunosWriteRepository();
+        final useCase = SalvarAlunoUseCase(repo);
+        final original = _buildAlunoBase();
 
-      await useCase.atualizar(
-        original: original,
-        input: const AlunoCadastroInput(
-          nome: 'Aluno Teste',
-          telefone: '(11) 99999-9999',
-          observacao: '',
-          diaVencimento: 25,
-          mensalidade: 180,
-          pago: false,
-        ),
-      );
+        await useCase.atualizar(
+          original: original,
+          input: const AlunoCadastroInput(
+            nome: 'Aluno Teste',
+            telefone: '(11) 99999-9999',
+            observacao: '',
+            diaVencimento: 25,
+            mensalidade: 180,
+            pago: false,
+          ),
+        );
 
-      expect(repo.updateCalls, 1);
-      expect(repo.setPagoCalls, 0);
-      expect(repo.syncCalls, 1);
-      expect(repo.syncedAluno?.diaVencimento, 25);
-      expect(repo.syncedAluno?.mensalidade, 180);
-    });
+        expect(repo.updateCalls, 1);
+        expect(repo.setPagoCalls, 0);
+        expect(repo.syncCalls, 1);
+        expect(repo.syncedAluno?.diaVencimento, 25);
+        expect(repo.syncedAluno?.mensalidade, 180);
+      },
+    );
   });
 
   group('BuildPixPayloadUseCase', () {
@@ -94,10 +100,8 @@ void main() {
   });
 
   group('BuildCobrancaMensagemUseCase', () {
-    test('inclui pix payload e frase customizada na mensagem', () async {
-      final fakeReader = _FakeCobrancaMessageReader(customMessage: 'Frase custom');
+    test('inclui pix payload na mensagem', () async {
       final useCase = BuildCobrancaMensagemUseCase(
-        configReader: fakeReader,
         cobrancaService: CobrancaService(),
       );
 
@@ -107,7 +111,6 @@ void main() {
       );
 
       expect(result, contains('PIX-COPIA-COLA'));
-      expect(result, contains('Frase custom'));
     });
   });
 }
@@ -207,12 +210,4 @@ class _FakePixPayloadService extends PixPayloadService {
     capturedTxid = txid;
     return returnValue;
   }
-}
-
-class _FakeCobrancaMessageReader implements CobrancaMessageConfigReader {
-  _FakeCobrancaMessageReader({required this.customMessage});
-  final String? customMessage;
-
-  @override
-  Future<String?> getCustomCobrancaMessage() async => customMessage;
 }

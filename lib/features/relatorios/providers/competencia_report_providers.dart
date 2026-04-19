@@ -58,11 +58,5 @@ final competenciaReportLiveProvider =
 final competenciaReportProvider = Provider.autoDispose<CompetenciaReportData>((
   ref,
 ) {
-  final referencia = ref.watch(competenciaSelecionadaProvider);
-  final competencia = Aluno.competenciaAtual(referencia);
-  final fechamento = ref
-      .watch(competenciaFechamentoStreamProvider(competencia))
-      .value;
-
-  return fechamento ?? ref.watch(competenciaReportLiveProvider);
+  return ref.watch(competenciaReportLiveProvider);
 });

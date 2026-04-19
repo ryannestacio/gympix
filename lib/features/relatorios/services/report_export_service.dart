@@ -204,7 +204,7 @@ class ReportExportService {
               4: const pw.FlexColumnWidth(1.2),
               5: const pw.FlexColumnWidth(1.3),
             },
-            rowDecoration: pw.BoxDecoration(
+            rowDecoration: const pw.BoxDecoration(
               border: pw.Border(
                 bottom: pw.BorderSide(color: lineColor, width: 0.4),
               ),
@@ -381,7 +381,7 @@ class ReportExportService {
               4: const pw.FlexColumnWidth(1.2),
               5: const pw.FlexColumnWidth(1.3),
             },
-            rowDecoration: pw.BoxDecoration(
+            rowDecoration: const pw.BoxDecoration(
               border: pw.Border(
                 bottom: pw.BorderSide(color: lineColor, width: 0.4),
               ),

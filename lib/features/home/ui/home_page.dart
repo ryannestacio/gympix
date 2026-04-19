@@ -9,7 +9,6 @@ import '../../../core/theme/app_theme_extensions.dart';
 import '../../../core/utils/firestore_error_formatter.dart';
 import '../../alunos/models/aluno.dart';
 import '../../alunos/providers/alunos_providers.dart';
-import '../../cobranca/providers/cobranca_regua_providers.dart';
 import '../../relatorios/models/competencia_report.dart';
 import '../../relatorios/providers/competencia_report_providers.dart';
 import '../../relatorios/services/report_export_service.dart';
@@ -26,15 +25,13 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(cobrancaReguaAutomationRunnerProvider);
+    ref.watch(vencimentoHojeNotificationRunnerProvider);
+    ref.watch(pagamentosAcumuladosBackfillRunnerProvider);
     final competenciaSelecionada = ref.watch(competenciaSelecionadaProvider);
     final report = ref.watch(competenciaReportProvider);
-    final stats = report.totais;
+    final stats = ref.watch(dashboardStatsProvider);
     final alunosAtivos =
         ref.watch(alunosStreamProvider).value ?? const <Aluno>[];
-    final faltando =
-        (stats.previstoMes - stats.recebidoMes).clamp(0, double.infinity)
-            as double;
     final proximos = _buildProximosVencimentos(alunosAtivos);
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -157,8 +154,8 @@ class HomePage extends ConsumerWidget {
                               const SizedBox(width: AppTheme.spacingSm),
                               Expanded(
                                 child: _FinanceMiniStat(
-                                  label: 'Faltando',
-                                  value: _formatMoney(faltando),
+                                  label: 'Em aberto',
+                                  value: _formatMoney(stats.emAbertoAcumulado),
                                   color: ext.warning,
                                 ),
                               ),
@@ -271,13 +268,7 @@ class HomePage extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: AppTheme.spacingSm),
-                    _FechamentoSection(
-                      report: report,
-                      onFecharMes: report.fechada
-                          ? null
-                          : () => _fecharMes(context, ref, report),
-                    ),
-                    const SizedBox(height: AppTheme.spacingXl),
+                    const SizedBox(height: AppTheme.spacingLg),
                     Text(
                       'Vencimentos proximos',
                       style: textTheme.titleLarge?.copyWith(
@@ -311,7 +302,7 @@ class HomePage extends ConsumerWidget {
                     _ActionTile(
                       icon: Icons.picture_as_pdf_outlined,
                       title: 'Exportar PDF mensal',
-                      subtitle: 'Resumo pronto para fechamento e contabilidade',
+                      subtitle: 'Resumo da competencia selecionada',
                       onTap: () => _exportPdf(context, report),
                     ),
                     const SizedBox(height: AppTheme.spacingXs + 2),
@@ -344,9 +335,9 @@ class HomePage extends ConsumerWidget {
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(formatFirestoreError(e))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(formatFirestoreError(e))));
     }
   }
 
@@ -368,165 +359,8 @@ class HomePage extends ConsumerWidget {
     }
   }
 
-  Future<void> _fecharMes(
-    BuildContext context,
-    WidgetRef ref,
-    CompetenciaReportData report,
-  ) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Fechar competencia'),
-        content: Text(
-          'Fechar ${report.competencia}? Isso vai congelar totais, status e snapshot dos alunos desse periodo.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Fechar mes'),
-          ),
-        ],
-      ),
-    );
-
-    if (ok != true) return;
-
-    try {
-      final reportLive = ref.read(competenciaReportLiveProvider);
-      await ref
-          .read(competenciaFechamentoServiceProvider)
-          .fecharCompetencia(reportLive);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Competencia ${report.competencia} fechada com sucesso.',
-          ),
-        ),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(formatFirestoreError(e))),
-      );
-    }
-  }
-
   String _formatMoney(double value) {
     return _currencyFormatter.format(value);
-  }
-}
-
-class _CompetenciaStatusChip extends StatelessWidget {
-  const _CompetenciaStatusChip({required this.report});
-
-  static final DateFormat _closedDateFormatter = DateFormat('dd/MM/yyyy');
-
-  final CompetenciaReportData report;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final label = report.fechada
-        ? 'Fechado${report.fechadoEm == null ? '' : ' em ${_closedDateFormatter.format(report.fechadoEm!)}'}'
-        : 'Competencia aberta';
-    final color = report.fechada ? scheme.primary : scheme.secondary;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingSm,
-        vertical: AppTheme.spacingXs,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            report.fechada ? Icons.lock_rounded : Icons.lock_open_rounded,
-            size: 16,
-            color: color,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: textTheme.labelMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FechamentoSection extends StatelessWidget {
-  const _FechamentoSection({required this.report, required this.onFecharMes});
-
-  final CompetenciaReportData report;
-  final VoidCallback? onFecharMes;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppTheme.spacingMd),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.black.withValues(alpha: 0.3)
-                : Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Fechamento da competencia',
-            style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: AppTheme.spacingXs),
-          Text(
-            report.fechada
-                ? 'Os totais e exportacoes desta competencia estao congelados.'
-                : 'Feche o mes para congelar totais, status e snapshot dos alunos.',
-            style: textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: AppTheme.spacingSm),
-          Row(
-            children: [
-              Expanded(child: _CompetenciaStatusChip(report: report)),
-              const SizedBox(width: AppTheme.spacingSm),
-              FilledButton.tonalIcon(
-                onPressed: onFecharMes,
-                icon: const Icon(Icons.lock_outline_rounded, size: 18),
-                label: const Text('Fechar mes'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
   }
 }
 

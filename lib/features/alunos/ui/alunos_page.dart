@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -24,22 +26,51 @@ class AlunosPage extends ConsumerStatefulWidget {
 class _AlunosPageState extends ConsumerState<AlunosPage> {
   bool _openingForm = false;
   late final TextEditingController _buscaController;
-  String _busca = '';
+
+  // Busca com debounce
+  String _buscaAtiva = '';
+  Timer? _debounceTimer;
+
+  // Ordenacao
   AlunosOrdenacao _ordenacao = AlunosOrdenacao.vencimento;
+
+  // Seeds para formulario
   int? _ultimoDiaVencimento;
   double? _ultimaMensalidade;
   DateTime? _lastSyncAt;
+
+  // Scroll controller para trigger de loadMore
+  late final ScrollController _scrollController;
+  bool _loadingMorePending = false;
 
   @override
   void initState() {
     super.initState();
     _buscaController = TextEditingController();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _debounceTimer?.cancel();
     _buscaController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_loadingMorePending || _openingForm) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    final atEnd = currentScroll >= maxScroll - 200;
+    final notifier = ref.read(_alunosPaginados.notifier);
+    if (atEnd && notifier.hasMore) {
+      _loadingMorePending = true;
+      notifier.loadMore();
+      _loadingMorePending = false;
+    }
   }
 
   void markSynced() {
@@ -47,27 +78,145 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
     setState(() => _lastSyncAt = DateTime.now());
   }
 
+  void _onBuscaChanged(String value) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      setState(() => _buscaAtiva = value);
+    });
+  }
+
+  List<Aluno> _getAlunosOrdenados(List<Aluno> alunos) {
+    final busca = _buscaAtiva.trim().toLowerCase();
+    final buscaDigitos = _somenteDigitos(busca);
+
+    final filtrados = alunos.where((aluno) {
+      if (busca.isEmpty) return true;
+      final nome = aluno.nome.toLowerCase();
+      final telefone = aluno.telefone.toLowerCase();
+      final telefoneDigitos = _somenteDigitos(aluno.telefone);
+      return nome.contains(busca) ||
+          telefone.contains(busca) ||
+          (buscaDigitos.isNotEmpty && telefoneDigitos.contains(buscaDigitos));
+    }).toList();
+
+    filtrados.sort((a, b) {
+      final byNome = a.nome.toLowerCase().compareTo(b.nome.toLowerCase());
+      final byVencimento = a.diaVencimento.compareTo(b.diaVencimento);
+
+      return switch (_ordenacao) {
+        AlunosOrdenacao.vencimento => byVencimento != 0 ? byVencimento : byNome,
+        AlunosOrdenacao.nome => byNome,
+        AlunosOrdenacao.pagosPrimeiro => _compararPeso(
+          _pesoPago(a),
+          _pesoPago(b),
+          byNome,
+        ),
+        AlunosOrdenacao.atrasadosPrimeiro => _compararPeso(
+          _pesoAtraso(a),
+          _pesoAtraso(b),
+          byNome,
+        ),
+      };
+    });
+    return filtrados;
+  }
+
+  List<Aluno> _aplicarFiltro(
+    AlunoFiltro filtro,
+    List<Aluno> ativosPaginados,
+    List<Aluno> historico,
+  ) {
+    final referencia = DateTime.now();
+    final competenciaAtual = Aluno.competenciaAtual(referencia);
+    final referenciaStatus = Aluno.referenciaStatusDaCompetencia(referencia);
+    final historicoById = <String, Aluno>{
+      for (final aluno in historico) aluno.id: aluno,
+    };
+    final ativos = ativosPaginados
+        .map((aluno) => historicoById[aluno.id] ?? aluno)
+        .where((aluno) => aluno.ativo)
+        .toList();
+
+    return switch (filtro) {
+      AlunoFiltro.todos => ativos,
+      AlunoFiltro.pagos =>
+        ativos
+            .where(
+              (a) => !a.temEmAbertoAte(
+                referencia,
+                referenciaStatus: referenciaStatus,
+              ),
+            )
+            .toList(),
+      AlunoFiltro.pendentes => ativos.where((a) {
+        final pagamentoAtual = a.pagamentoDaCompetencia(
+          competenciaAtual,
+          referenciaStatus: referenciaStatus,
+        );
+        final emAbertoTotal = a.totalCompetenciasEmAbertoAte(
+          referencia,
+          referenciaStatus: referenciaStatus,
+        );
+        final soCompetenciaAtual = !pagamentoAtual.pago && emAbertoTotal == 1;
+        return pagamentoAtual.status == PagamentoStatus.pendente &&
+            soCompetenciaAtual;
+      }).toList(),
+      AlunoFiltro.atrasados => ativos.where((a) {
+        final pagamentoAtual = a.pagamentoDaCompetencia(
+          competenciaAtual,
+          referenciaStatus: referenciaStatus,
+        );
+        final emAbertoTotal = a.totalCompetenciasEmAbertoAte(
+          referencia,
+          referenciaStatus: referenciaStatus,
+        );
+        final possuiPendenciaAnterior =
+            emAbertoTotal > (pagamentoAtual.pago ? 0 : 1);
+        return pagamentoAtual.status == PagamentoStatus.atrasado ||
+            possuiPendenciaAnterior;
+      }).toList(),
+      AlunoFiltro.inativos => historico.where((a) => !a.ativo).toList(),
+    };
+  }
+
+  /// Provider instance reutilizado na pagina (somente ativos).
+  AlunosPaginadosProvider get _alunosPaginados =>
+      alunosPaginadosProvider(onlyActive: true);
+
   @override
   Widget build(BuildContext context) {
-    final alunosAsync = ref.watch(alunosHistoricoStreamProvider);
-    if (_lastSyncAt == null && alunosAsync.hasValue) {
-      markSynced();
-    }
-
-    final todosAlunos = alunosAsync.value ?? const <Aluno>[];
-    final alunosBase = ref.watch(alunosFiltradosProvider);
-    final alunos = _aplicarBuscaEOrdenacao(alunosBase);
+    ref.watch(pagamentosAcumuladosBackfillRunnerProvider);
+    final paginationState = ref.watch(_alunosPaginados);
+    final ativosPaginados = paginationState.value ?? const <Aluno>[];
+    final historicoAsync = ref.watch(alunosHistoricoStreamProvider);
+    final historico = historicoAsync.value ?? const <Aluno>[];
     final filtro = ref.watch(alunosFiltroProvider);
+    final todosAlunos = historico;
+    final alunosBase = _aplicarFiltro(filtro, ativosPaginados, historico);
+    final alunos = _getAlunosOrdenados(alunosBase);
     final stats = ref.watch(dashboardStatsProvider);
     final defaultMensalidade = ref
         .watch(defaultMensalidadeStreamProvider)
         .value;
 
     final scheme = Theme.of(context).colorScheme;
+    final isLoading = filtro == AlunoFiltro.inativos
+        ? historicoAsync.isLoading
+        : paginationState.isLoading;
+    final notifier = ref.read(_alunosPaginados.notifier);
+    final hasMore = filtro == AlunoFiltro.inativos ? false : notifier.hasMore;
+    final baseAsync = filtro == AlunoFiltro.inativos
+        ? historicoAsync
+        : paginationState;
+    final hasBaseData = filtro == AlunoFiltro.inativos
+        ? historico.isNotEmpty
+        : ativosPaginados.isNotEmpty;
 
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
+          controller: _scrollController,
           slivers: [
             SliverToBoxAdapter(
               child: AlunosHeaderSection(
@@ -76,11 +225,11 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
                 onExportCsv: () => _exportarCsvAtual(context, alunos),
                 onExportPdf: () => _exportarPdfAtual(context, alunos),
                 buscaController: _buscaController,
-                busca: _busca,
-                onBuscaChanged: (value) => setState(() => _busca = value),
+                busca: _buscaAtiva,
+                onBuscaChanged: _onBuscaChanged,
                 onClearBusca: () {
                   _buscaController.clear();
-                  setState(() => _busca = '');
+                  setState(() => _buscaAtiva = '');
                 },
                 ordenacao: _ordenacao,
                 onOrdenacaoChanged: (value) =>
@@ -90,7 +239,7 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
                   ref.read(alunosFiltroProvider.notifier).select(v);
                 },
                 stats: stats,
-                isSyncing: alunosAsync.isLoading,
+                isSyncing: isLoading,
                 lastSyncAt: _lastSyncAt,
               ),
             ),
@@ -98,86 +247,88 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
               padding: const EdgeInsets.symmetric(
                 horizontal: AppTheme.spacingLg,
               ),
-              sliver: alunosAsync.when(
-                data: (_) {
-                  if (alunos.isEmpty) {
-                    return SliverFillRemaining(
+              sliver: baseAsync.hasError && !hasBaseData
+                  ? SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Text(
+                          'Erro ao carregar: ${formatFirestoreError(baseAsync.asError!.error)}',
+                          style: TextStyle(color: scheme.error),
+                        ),
+                      ),
+                    )
+                  : isLoading && !hasBaseData
+                  ? SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: scheme.primary,
+                          ),
+                        ),
+                      ),
+                    )
+                  : alunos.isEmpty
+                  ? SliverFillRemaining(
                       hasScrollBody: false,
                       child: Center(
                         child: EmptyAlunosState(
                           hasData: todosAlunos.isNotEmpty,
-                          hasBusca: _busca.trim().isNotEmpty,
+                          hasBusca: _buscaAtiva.trim().isNotEmpty,
                           onResetBusca: () {
                             _buscaController.clear();
                             setState(() {
-                              _busca = '';
+                              _buscaAtiva = '';
                               _ordenacao = AlunosOrdenacao.vencimento;
                             });
                             ref
                                 .read(alunosFiltroProvider.notifier)
                                 .select(AlunoFiltro.todos);
+                            notifier.refresh();
                           },
                           onAdd: _openingForm
                               ? null
                               : () => _onNovoAluno(defaultMensalidade),
                         ),
                       ),
-                    );
-                  }
-
-                  return SliverList(
-                    delegate: SliverChildBuilderDelegate((context, i) {
-                      return TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0, end: 1),
-                        duration: Duration(
-                          milliseconds: 200 + (i > 8 ? 0 : i * 30),
-                        ),
-                        curve: Curves.easeOutCubic,
-                        builder: (context, t, child) => Opacity(
-                          opacity: t,
-                          child: Transform.translate(
-                            offset: Offset(0, 8 * (1 - t)),
-                            child: child,
-                          ),
-                        ),
-                        child: Padding(
+                    )
+                  : SliverList(
+                      delegate: SliverChildBuilderDelegate((context, i) {
+                        if (i >= alunos.length && hasMore) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        return Padding(
                           padding: const EdgeInsets.only(
                             bottom: AppTheme.spacingSm,
                           ),
-                          child: AlunoCard(
-                            key: ValueKey(alunos[i].id),
-                            aluno: alunos[i],
-                            defaultMensalidade: defaultMensalidade,
-                            onSynced: markSynced,
+                          child: RepaintBoundary(
+                            child: _AnimatedCard(
+                              key: ValueKey(alunos[i].id),
+                              delay: i > 8 ? 0 : i * 30,
+                              child: AlunoCard(
+                                aluno: alunos[i],
+                                defaultMensalidade: defaultMensalidade,
+                                onSynced: markSynced,
+                              ),
+                            ),
                           ),
-                        ),
-                      );
-                    }, childCount: alunos.length),
-                  );
-                },
-                error: (e, _) => SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: Text(
-                      'Erro ao carregar: $e',
-                      style: TextStyle(color: scheme.error),
+                        );
+                      }, childCount: alunos.length + (hasMore ? 1 : 0)),
                     ),
-                  ),
-                ),
-                loading: () => SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: scheme.primary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 90)),
           ],
@@ -233,6 +384,7 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
       _ultimoDiaVencimento = result.diaVencimento;
       _ultimaMensalidade = result.mensalidade;
       markSynced();
+      ref.read(_alunosPaginados.notifier).refresh();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -245,9 +397,9 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(formatFirestoreError(e))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(formatFirestoreError(e))));
     }
   }
 
@@ -275,7 +427,7 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao exportar CSV: $e')));
+      ).showSnackBar(SnackBar(content: Text(formatFirestoreError(e))));
     }
   }
 
@@ -303,47 +455,75 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao exportar PDF: $e')));
+      ).showSnackBar(SnackBar(content: Text(formatFirestoreError(e))));
     }
   }
+}
 
-  List<Aluno> _aplicarBuscaEOrdenacao(List<Aluno> alunos) {
-    final buscaNormalizada = _busca.trim().toLowerCase();
-    final buscaDigitos = _somenteDigitos(buscaNormalizada);
+/// Wrapper de animacao reutilizavel para cards da lista.
+class _AnimatedCard extends StatefulWidget {
+  const _AnimatedCard({
+    required super.key,
+    required this.child,
+    this.delay = 0,
+  });
 
-    final filtrados = alunos.where((aluno) {
-      if (buscaNormalizada.isEmpty) return true;
-      final nome = aluno.nome.toLowerCase();
-      final telefone = aluno.telefone.toLowerCase();
-      final telefoneDigitos = _somenteDigitos(aluno.telefone);
-      return nome.contains(buscaNormalizada) ||
-          telefone.contains(buscaNormalizada) ||
-          (buscaDigitos.isNotEmpty && telefoneDigitos.contains(buscaDigitos));
-    }).toList();
+  final Widget child;
+  final int delay;
 
-    filtrados.sort((a, b) {
-      final byNome = a.nome.toLowerCase().compareTo(b.nome.toLowerCase());
-      final byVencimento = a.diaVencimento.compareTo(b.diaVencimento);
+  @override
+  State<_AnimatedCard> createState() => _AnimatedCardState();
+}
 
-      return switch (_ordenacao) {
-        AlunosOrdenacao.vencimento => byVencimento != 0 ? byVencimento : byNome,
-        AlunosOrdenacao.nome => byNome,
-        AlunosOrdenacao.pagosPrimeiro => _compararPeso(
-          _pesoPago(a),
-          _pesoPago(b),
-          byNome,
-        ),
-        AlunosOrdenacao.atrasadosPrimeiro => _compararPeso(
-          _pesoAtraso(a),
-          _pesoAtraso(b),
-          byNome,
-        ),
-      };
-    });
+class _AnimatedCardState extends State<_AnimatedCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacity;
+  late Animation<Offset> _slide;
 
-    return filtrados;
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _opacity = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+    _startAnimation();
+  }
+
+  void _startAnimation() {
+    widget.delay == 0
+        ? _controller.forward()
+        : Future.delayed(Duration(milliseconds: widget.delay), () {
+            if (mounted) _controller.forward();
+          });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(position: _slide, child: widget.child),
+    );
   }
 }
+
+// --- Helper functions (fora da classe para reuso) ---
 
 int _compararPeso(int pesoA, int pesoB, int fallback) {
   final compare = pesoB.compareTo(pesoA);

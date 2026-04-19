@@ -1,11 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'
-    show Notifier, NotifierProvider, Provider, StreamProvider;
+    show FutureProvider, Notifier, NotifierProvider, Provider, StreamProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/providers/firebase_providers.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../models/aluno.dart';
 import '../repository/alunos_repository.dart';
+import '../services/vencimento_hoje_notification_service.dart';
 
 part 'alunos_providers.g.dart';
 
@@ -37,6 +39,8 @@ AlunosRepository alunosRepository(Ref ref) {
   return AlunosRepository(ref.watch(firestoreProvider), session.tenantId);
 }
 
+// --- Streams em tempo real (mantidos para stats e reportes) ---
+
 @riverpod
 Stream<List<Aluno>> alunosStream(Ref ref) {
   return ref.watch(alunosRepositoryProvider).watchAlunosAtivos();
@@ -47,6 +51,139 @@ final alunosHistoricoStreamProvider = StreamProvider.autoDispose<List<Aluno>>((
 ) {
   return ref.watch(alunosRepositoryProvider).watchTodosAlunos();
 });
+
+final vencimentoHojeNotificationServiceProvider =
+    Provider<VencimentoHojeNotificationService>((ref) {
+      return VencimentoHojeNotificationService();
+    });
+
+final vencimentoHojeNotificationRunnerProvider =
+    FutureProvider.autoDispose<int>((ref) async {
+      final alunos =
+          ref.watch(alunosHistoricoStreamProvider).value ?? const <Aluno>[];
+      if (alunos.isEmpty) return 0;
+
+      final now = DateTime.now();
+      final hoje = DateTime(now.year, now.month, now.day);
+      final totalVencimentosHoje = alunos.where((aluno) {
+        if (!aluno.ativo) return false;
+        final pagamento = aluno.pagamentoDoMes(now);
+        if (pagamento.status == PagamentoStatus.pago) return false;
+        final vencimento = Aluno.dataVencimento(aluno.diaVencimento, now);
+        return vencimento.year == hoje.year &&
+            vencimento.month == hoje.month &&
+            vencimento.day == hoje.day;
+      }).length;
+
+      if (totalVencimentosHoje <= 0) return 0;
+      await ref
+          .read(vencimentoHojeNotificationServiceProvider)
+          .notifyDueToday(totalAlunos: totalVencimentosHoje, now: now);
+      return totalVencimentosHoje;
+    });
+
+final pagamentosAcumuladosBackfillRunnerProvider =
+    FutureProvider.autoDispose<int>((ref) async {
+      final alunos =
+          ref.watch(alunosHistoricoStreamProvider).value ?? const <Aluno>[];
+      if (alunos.isEmpty) return 0;
+
+      try {
+        return await ref
+            .read(alunosRepositoryProvider)
+            .backfillPagamentosAcumulados(alunos: alunos);
+      } catch (_) {
+        return 0;
+      }
+    });
+
+// --- Lista paginada com startAfterDocument ---
+
+@riverpod
+class AlunosPaginados extends _$AlunosPaginados {
+  final List<Aluno> _alunos = [];
+  final Set<String> _ids = {};
+  DocumentSnapshot? _lastDoc;
+  bool _hasMore = true;
+  bool _loadingMore = false;
+
+  @override
+  AsyncValue<List<Aluno>> build({bool onlyActive = true}) {
+    // Reset quando muda o parametro
+    _alunos.clear();
+    _ids.clear();
+    _lastDoc = null;
+    _hasMore = true;
+    _loadingMore = false;
+
+    ref.keepAlive();
+
+    // Primeira pagina carrega no build
+    _loadNextPage();
+    return const AsyncLoading();
+  }
+
+  Future<void> loadMore() async {
+    if (_loadingMore || !_hasMore || state.isLoading) return;
+    _loadingMore = true;
+    await _loadNextPage();
+    _loadingMore = false;
+  }
+
+  /// True se existem mais paginas para carregar.
+  bool get hasMore => _hasMore && !_loadingMore;
+
+  /// Forca recarregamento completo (limpa cache).
+  void refresh() {
+    _alunos.clear();
+    _ids.clear();
+    _lastDoc = null;
+    _hasMore = true;
+    _loadingMore = false;
+    _loadNextPage();
+  }
+
+  Future<void> _loadNextPage() async {
+    final repo = ref.read(alunosRepositoryProvider);
+    try {
+      var keepPaging = true;
+      var hopCount = 0;
+      while (keepPaging) {
+        final page = await repo.fetchAlunosPage(
+          startAfter: _lastDoc,
+          onlyActive: onlyActive,
+        );
+
+        var addedAny = false;
+        for (final aluno in page.alunos) {
+          if (_ids.contains(aluno.id)) continue;
+          _ids.add(aluno.id);
+          _alunos.add(aluno);
+          addedAny = true;
+        }
+
+        _lastDoc = page.lastDoc;
+        _hasMore = page.hasMore;
+        hopCount++;
+
+        // Quando onlyActive=true, uma pagina pode vir vazia apos filtro.
+        // Avanca automaticamente ate achar ativos ou acabar as paginas.
+        keepPaging = onlyActive && !addedAny && _hasMore && hopCount < 40;
+      }
+
+      state = AsyncData(_alunos.toList());
+    } catch (e, st) {
+      if (_alunos.isEmpty) {
+        state = AsyncError(e, st);
+      } else {
+        // Mantem dados anteriores como fallback
+        state = AsyncData(_alunos.toList());
+      }
+    }
+  }
+}
+
+// --- Filtro e stats mantidos ---
 
 @riverpod
 class AlunosFiltro extends _$AlunosFiltro {
@@ -64,13 +201,48 @@ List<Aluno> alunosFiltrados(Ref ref) {
   final alunosAsync = ref.watch(alunosHistoricoStreamProvider);
   final alunos = alunosAsync.value ?? const <Aluno>[];
   final ativos = alunos.where((a) => a.ativo).toList();
+  final referencia = DateTime.now();
+  final competenciaAtual = Aluno.competenciaAtual(referencia);
+  final referenciaStatus = Aluno.referenciaStatusDaCompetencia(referencia);
 
   final filtrados = switch (filtro) {
     AlunoFiltro.todos => ativos,
-    AlunoFiltro.pagos => ativos.where((a) => a.pago).toList(),
-    AlunoFiltro.pendentes =>
-      ativos.where((a) => !a.pago && !a.atrasado).toList(),
-    AlunoFiltro.atrasados => ativos.where((a) => a.atrasado).toList(),
+    AlunoFiltro.pagos =>
+      ativos
+          .where(
+            (a) => !a.temEmAbertoAte(
+              referencia,
+              referenciaStatus: referenciaStatus,
+            ),
+          )
+          .toList(),
+    AlunoFiltro.pendentes => ativos.where((a) {
+      final pagamentoAtual = a.pagamentoDaCompetencia(
+        competenciaAtual,
+        referenciaStatus: referenciaStatus,
+      );
+      final emAbertoTotal = a.totalCompetenciasEmAbertoAte(
+        referencia,
+        referenciaStatus: referenciaStatus,
+      );
+      final soCompetenciaAtual = !pagamentoAtual.pago && emAbertoTotal == 1;
+      return pagamentoAtual.status == PagamentoStatus.pendente &&
+          soCompetenciaAtual;
+    }).toList(),
+    AlunoFiltro.atrasados => ativos.where((a) {
+      final pagamentoAtual = a.pagamentoDaCompetencia(
+        competenciaAtual,
+        referenciaStatus: referenciaStatus,
+      );
+      final emAbertoTotal = a.totalCompetenciasEmAbertoAte(
+        referencia,
+        referenciaStatus: referenciaStatus,
+      );
+      final possuiPendenciaAnterior =
+          emAbertoTotal > (pagamentoAtual.pago ? 0 : 1);
+      return pagamentoAtual.status == PagamentoStatus.atrasado ||
+          possuiPendenciaAnterior;
+    }).toList(),
     AlunoFiltro.inativos => alunos.where((a) => !a.ativo).toList(),
   };
 
@@ -85,6 +257,7 @@ class DashboardStats {
     required this.atrasados,
     required this.recebidoMes,
     required this.previstoMes,
+    required this.emAbertoAcumulado,
     required this.inadimplenciaPercent,
   });
 
@@ -93,6 +266,7 @@ class DashboardStats {
   final int atrasados;
   final double recebidoMes;
   final double previstoMes;
+  final double emAbertoAcumulado;
   final double inadimplenciaPercent;
 }
 
@@ -125,8 +299,16 @@ final dashboardFechamentoStatsProvider = Provider.autoDispose<DashboardStats>((
 });
 
 DashboardStats _buildDashboardStats(List<Aluno> alunos, DateTime referencia) {
-  final pagamentosMes = alunos
-      .map((a) => a.pagamentoDoMes(referencia))
+  final ativos = alunos.where((a) => a.ativo).toList();
+  final competencia = Aluno.competenciaAtual(referencia);
+  final referenciaStatus = Aluno.referenciaStatusDaCompetencia(referencia);
+  final pagamentosMes = ativos
+      .map(
+        (a) => a.pagamentoDaCompetencia(
+          competencia,
+          referenciaStatus: referenciaStatus,
+        ),
+      )
       .toList();
 
   final pendentes = pagamentosMes
@@ -141,16 +323,30 @@ DashboardStats _buildDashboardStats(List<Aluno> alunos, DateTime referencia) {
 
   final recebidoMes = recebidos.fold<double>(0, (s, p) => s + p.valor);
   final previstoMes = pagamentosMes.fold<double>(0, (s, p) => s + p.valor);
-  final totalNaoPago = pendentes + atrasados;
-  final inadimplenciaPercent = alunos.isEmpty
+  final emAbertoAcumulado = ativos.fold<double>(
+    0,
+    (total, aluno) =>
+        total +
+        aluno.valorEmAbertoAte(referencia, referenciaStatus: referenciaStatus),
+  );
+  final inadimplentesAcumulados = ativos
+      .where(
+        (aluno) => aluno.temEmAbertoAte(
+          referencia,
+          referenciaStatus: referenciaStatus,
+        ),
+      )
+      .length;
+  final inadimplenciaPercent = ativos.isEmpty
       ? 0.0
-      : (totalNaoPago / alunos.length) * 100.0;
+      : (inadimplentesAcumulados / ativos.length) * 100.0;
   return DashboardStats(
-    totalAlunos: alunos.length,
+    totalAlunos: ativos.length,
     pendentes: pendentes,
     atrasados: atrasados,
     recebidoMes: recebidoMes,
     previstoMes: previstoMes,
+    emAbertoAcumulado: emAbertoAcumulado,
     inadimplenciaPercent: inadimplenciaPercent,
   );
 }

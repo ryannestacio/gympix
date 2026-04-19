@@ -125,10 +125,7 @@ class AlunosHeaderSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppTheme.spacingSm),
-          SyncStatusChip(
-            isSyncing: isSyncing,
-            lastSyncAt: lastSyncAt,
-          ),
+          SyncStatusChip(isSyncing: isSyncing, lastSyncAt: lastSyncAt),
           const SizedBox(height: AppTheme.spacingMd),
           BuscaOrdenacaoBar(
             controller: buscaController,
@@ -139,10 +136,7 @@ class AlunosHeaderSection extends StatelessWidget {
             onOrdenacaoChanged: onOrdenacaoChanged,
           ),
           const SizedBox(height: AppTheme.spacingMd),
-          FiltroChips(
-            value: filtro,
-            onChanged: onFiltroChanged,
-          ),
+          FiltroChips(value: filtro, onChanged: onFiltroChanged),
           const SizedBox(height: AppTheme.spacingSm),
           Row(
             children: [
@@ -256,9 +250,9 @@ class BuscaOrdenacaoBar extends StatelessWidget {
                 Text(
                   'Ordenar',
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -277,80 +271,141 @@ class FiltroChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const items = <_FiltroChipItem>[
+      _FiltroChipItem(label: 'Ativos', value: AlunoFiltro.todos),
+      _FiltroChipItem(label: 'Pagos', value: AlunoFiltro.pagos),
+      _FiltroChipItem(label: 'Pendentes', value: AlunoFiltro.pendentes),
+      _FiltroChipItem(label: 'Atrasados', value: AlunoFiltro.atrasados),
+      _FiltroChipItem(label: 'Inativos', value: AlunoFiltro.inativos),
+    ];
+
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        _Chip(
-          label: 'Todos',
-          selected: value == AlunoFiltro.todos,
-          onTap: () => onChanged(AlunoFiltro.todos),
-        ),
-        _Chip(
-          label: 'Pagos',
-          selected: value == AlunoFiltro.pagos,
-          onTap: () => onChanged(AlunoFiltro.pagos),
-        ),
-        _Chip(
-          label: 'Pendentes',
-          selected: value == AlunoFiltro.pendentes,
-          onTap: () => onChanged(AlunoFiltro.pendentes),
-        ),
-        _Chip(
-          label: 'Atrasados',
-          selected: value == AlunoFiltro.atrasados,
-          onTap: () => onChanged(AlunoFiltro.atrasados),
-        ),
-        _Chip(
-          label: 'Inativos',
-          selected: value == AlunoFiltro.inativos,
-          onTap: () => onChanged(AlunoFiltro.inativos),
-        ),
-      ],
+      spacing: 10,
+      runSpacing: 10,
+      children: List.generate(items.length, (index) {
+        final item = items[index];
+        return _Chip(
+          label: item.label,
+          selected: value == item.value,
+          index: index,
+          onTap: () => onChanged(item.value),
+        );
+      }),
     );
   }
+}
+
+class _FiltroChipItem {
+  const _FiltroChipItem({required this.label, required this.value});
+
+  final String label;
+  final AlunoFiltro value;
 }
 
 class _Chip extends StatelessWidget {
   const _Chip({
     required this.label,
     required this.selected,
+    required this.index,
     required this.onTap,
   });
 
   final String label;
   final bool selected;
+  final int index;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: selected ? scheme.primaryContainer.withValues(alpha: 0.6) : scheme.surface,
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected ? scheme.primary : scheme.outline,
-              width: selected ? 1.5 : 1,
+    final radius = _chipRadius(index);
+    final padding = _chipPadding(index);
+    final yOffset = switch (index) {
+      0 => 0.0,
+      1 => -1.5,
+      2 => 1.0,
+      3 => -2.0,
+      _ => 0.5,
+    };
+
+    return Transform.translate(
+      offset: Offset(0, yOffset),
+      child: Material(
+        color: selected
+            ? scheme.primaryContainer.withValues(alpha: 0.62)
+            : scheme.surface,
+        borderRadius: radius,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
+            padding: padding,
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              border: Border.all(
+                color: selected ? scheme.primary : scheme.outline,
+                width: selected ? 1.5 : 1,
+              ),
             ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-              color: selected ? scheme.primary : scheme.onSurfaceVariant,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected ? scheme.primary : scheme.onSurfaceVariant,
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  BorderRadius _chipRadius(int index) {
+    return switch (index) {
+      0 => const BorderRadius.only(
+        topLeft: Radius.circular(22),
+        topRight: Radius.circular(14),
+        bottomLeft: Radius.circular(14),
+        bottomRight: Radius.circular(22),
+      ),
+      1 => const BorderRadius.only(
+        topLeft: Radius.circular(16),
+        topRight: Radius.circular(22),
+        bottomLeft: Radius.circular(22),
+        bottomRight: Radius.circular(12),
+      ),
+      2 => const BorderRadius.only(
+        topLeft: Radius.circular(20),
+        topRight: Radius.circular(12),
+        bottomLeft: Radius.circular(12),
+        bottomRight: Radius.circular(24),
+      ),
+      3 => const BorderRadius.only(
+        topLeft: Radius.circular(14),
+        topRight: Radius.circular(24),
+        bottomLeft: Radius.circular(20),
+        bottomRight: Radius.circular(14),
+      ),
+      _ => const BorderRadius.only(
+        topLeft: Radius.circular(24),
+        topRight: Radius.circular(14),
+        bottomLeft: Radius.circular(18),
+        bottomRight: Radius.circular(20),
+      ),
+    };
+  }
+
+  EdgeInsets _chipPadding(int index) {
+    return switch (index) {
+      0 => const EdgeInsets.fromLTRB(17, 9, 14, 8),
+      1 => const EdgeInsets.fromLTRB(15, 8, 17, 10),
+      2 => const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      3 => const EdgeInsets.fromLTRB(15, 8, 18, 9),
+      _ => const EdgeInsets.fromLTRB(16, 9, 15, 9),
+    };
   }
 }
 
@@ -416,8 +471,8 @@ class SyncStatusChip extends StatelessWidget {
     final label = isSyncing
         ? 'Sincronizando...'
         : lastSyncAt == null
-            ? 'Aguardando sincronizacao'
-            : 'Atualizado as ${DateFormat('HH:mm').format(lastSyncAt!)}';
+        ? 'Aguardando sincronizacao'
+        : 'Atualizado as ${DateFormat('HH:mm').format(lastSyncAt!)}';
     final color = isSyncing ? scheme.primary : scheme.onSurfaceVariant;
 
     return Container(
@@ -444,9 +499,9 @@ class SyncStatusChip extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

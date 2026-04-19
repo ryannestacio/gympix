@@ -18,9 +18,18 @@ class HistoricoAlunoSheet extends StatefulWidget {
 class _HistoricoAlunoSheetState extends State<HistoricoAlunoSheet> {
   String _competenciaSelecionada = 'todas';
 
+  List<PagamentoMensal> get _historicoCompleto {
+    final referencia = DateTime.now();
+    final itens = widget.aluno.pagamentosAte(
+      referencia,
+      referenciaStatus: referencia,
+    );
+    itens.sort((a, b) => b.competencia.compareTo(a.competencia));
+    return itens;
+  }
+
   List<PagamentoMensal> get _itensOrdenados {
-    final itens = widget.aluno.pagamentos.values.toList()
-      ..sort((a, b) => b.competencia.compareTo(a.competencia));
+    final itens = _historicoCompleto;
     if (_competenciaSelecionada == 'todas') return itens;
     return itens
         .where((item) => item.competencia == _competenciaSelecionada)
@@ -28,8 +37,9 @@ class _HistoricoAlunoSheetState extends State<HistoricoAlunoSheet> {
   }
 
   List<String> get _competencias {
-    final competencias = widget.aluno.pagamentos.keys.toList()
-      ..sort((a, b) => b.compareTo(a));
+    final competencias =
+        _historicoCompleto.map((item) => item.competencia).toSet().toList()
+          ..sort((a, b) => b.compareTo(a));
     return ['todas', ...competencias];
   }
 
@@ -91,7 +101,9 @@ class _HistoricoAlunoSheetState extends State<HistoricoAlunoSheet> {
               decoration: BoxDecoration(
                 color: scheme.surface,
                 borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                border: Border.all(color: scheme.outline.withValues(alpha: 0.7)),
+                border: Border.all(
+                  color: scheme.outline.withValues(alpha: 0.7),
+                ),
               ),
               child: Row(
                 children: [
@@ -197,7 +209,9 @@ class _HistoricoAlunoSheetState extends State<HistoricoAlunoSheet> {
                             label: 'Pago em',
                             value: p.pagoEm == null
                                 ? '-'
-                                : DateFormat('dd/MM/yyyy HH:mm').format(p.pagoEm!),
+                                : DateFormat(
+                                    'dd/MM/yyyy HH:mm',
+                                  ).format(p.pagoEm!),
                           ),
                           if ((p.comprovanteUrl ?? '').isNotEmpty) ...[
                             const SizedBox(height: AppTheme.spacingSm),

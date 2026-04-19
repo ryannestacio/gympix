@@ -3,8 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/aluno.dart';
 
 /// Converte [Aluno] e [PagamentoMensal] para/de documentos do Firestore.
-/// Separa as dependências de persistência do model de domínio.
+/// Toda a logica de mapeamento de persistencia fica aqui,
+/// mantendo os models de dominio livres de dependencia de banco.
 class AlunoMapper {
+  // --- Aluno: Firestore ---
+
   /// Converte um [Aluno] em mapa para criação no Firestore.
   static Map<String, Object?> toFirestoreCreate(Aluno aluno) {
     return {
@@ -16,12 +19,12 @@ class AlunoMapper {
           : Timestamp.fromDate(aluno.arquivadoEm!),
       'pagamentos': {
         for (final entry in aluno.pagamentos.entries)
-          entry.key: pagamentoToFirestore(entry.value),
+          entry.key: _pagamentoToMap(entry.value),
       },
     };
   }
 
-  /// Converte os campos editáveis de um [Aluno] em mapa para update.
+  /// Converte os campos editaveis de um [Aluno] em mapa para update.
   static Map<String, Object?> toFirestoreUpdate(Aluno aluno) {
     return {
       'nome': aluno.nome,
@@ -47,14 +50,14 @@ class AlunoMapper {
         final key = entry.key.toString();
         final value = entry.value;
         if (value is Map<String, dynamic>) {
-          pagamentos[key] = PagamentoMensal.fromMap(
+          pagamentos[key] = _pagamentoFromMap(
             key,
             value,
             fallbackValor: mensalidade,
             fallbackDiaVencimento: diaVencimento,
           );
         } else if (value is Map) {
-          pagamentos[key] = PagamentoMensal.fromMap(
+          pagamentos[key] = _pagamentoFromMap(
             key,
             Map<String, dynamic>.from(value),
             fallbackValor: mensalidade,
@@ -79,8 +82,14 @@ class AlunoMapper {
     );
   }
 
+  // --- PagamentoMensal: mapas internos ---
+
   /// Converte [PagamentoMensal] em mapa para Firestore.
   static Map<String, Object?> pagamentoToFirestore(PagamentoMensal p) {
+    return _pagamentoToMap(p);
+  }
+
+  static Map<String, Object?> _pagamentoToMap(PagamentoMensal p) {
     return {
       'competencia': p.competencia,
       'valor': p.valor,
@@ -91,6 +100,26 @@ class AlunoMapper {
       'observacao': p.observacao,
     };
   }
+
+  static PagamentoMensal _pagamentoFromMap(
+    String competencia,
+    Map<String, dynamic> map, {
+    required double fallbackValor,
+    required int fallbackDiaVencimento,
+  }) {
+    final rawPagoEm = map['pagoEm'];
+    return PagamentoMensal(
+      competencia: competencia,
+      valor: _parseDouble(map['valor'], fallbackValor),
+      status: _parseStatus(map['status'], fallbackDiaVencimento),
+      diaVencimento: _parseDia(map['diaVencimento'], fallbackDiaVencimento),
+      pagoEm: rawPagoEm is Timestamp ? rawPagoEm.toDate() : null,
+      comprovanteUrl: (map['comprovanteUrl'] as String?)?.trim(),
+      observacao: (map['observacao'] as String?)?.trim(),
+    );
+  }
+
+  // --- Helpers ---
 
   static int _parseDia(dynamic value, int fallback) {
     if (value is int) {
@@ -114,5 +143,29 @@ class AlunoMapper {
       if (parsed != null) return parsed;
     }
     return fallback;
+  }
+
+  static PagamentoStatus _parseStatus(dynamic value, int diaVencimento) {
+    if (value is String) {
+      for (final status in PagamentoStatus.values) {
+        if (status.name == value) return status;
+      }
+    }
+    return _isVencimentoEmAtraso(DateTime.now(), diaVencimento)
+        ? PagamentoStatus.atrasado
+        : PagamentoStatus.pendente;
+  }
+
+  static bool _isVencimentoEmAtraso(
+    DateTime referenceDate,
+    int diaVencimento,
+  ) {
+    final hoje = DateTime(
+      referenceDate.year,
+      referenceDate.month,
+      referenceDate.day,
+    );
+    final vencimento = Aluno.dataVencimento(diaVencimento, referenceDate);
+    return hoje.isAfter(vencimento);
   }
 }

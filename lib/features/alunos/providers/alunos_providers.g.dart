@@ -94,6 +94,105 @@ final class AlunosStreamProvider
 
 String _$alunosStreamHash() => r'5d1f7a4f89fa7c5f11ee7d37517b1d178d79a809';
 
+@ProviderFor(AlunosPaginados)
+const alunosPaginadosProvider = AlunosPaginadosFamily._();
+
+final class AlunosPaginadosProvider
+    extends $NotifierProvider<AlunosPaginados, AsyncValue<List<Aluno>>> {
+  const AlunosPaginadosProvider._({
+    required AlunosPaginadosFamily super.from,
+    required bool super.argument,
+  }) : super(
+         retry: null,
+         name: r'alunosPaginadosProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$alunosPaginadosHash();
+
+  @override
+  String toString() {
+    return r'alunosPaginadosProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  AlunosPaginados create() => AlunosPaginados();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<List<Aluno>> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<List<Aluno>>>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AlunosPaginadosProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$alunosPaginadosHash() => r'e4e6fb150bca7f4d7bff9095d8a365d95aafb60f';
+
+final class AlunosPaginadosFamily extends $Family
+    with
+        $ClassFamilyOverride<
+          AlunosPaginados,
+          AsyncValue<List<Aluno>>,
+          AsyncValue<List<Aluno>>,
+          AsyncValue<List<Aluno>>,
+          bool
+        > {
+  const AlunosPaginadosFamily._()
+    : super(
+        retry: null,
+        name: r'alunosPaginadosProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  AlunosPaginadosProvider call({bool onlyActive = true}) =>
+      AlunosPaginadosProvider._(argument: onlyActive, from: this);
+
+  @override
+  String toString() => r'alunosPaginadosProvider';
+}
+
+abstract class _$AlunosPaginados extends $Notifier<AsyncValue<List<Aluno>>> {
+  late final _$args = ref.$arg as bool;
+  bool get onlyActive => _$args;
+
+  AsyncValue<List<Aluno>> build({bool onlyActive = true});
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build(onlyActive: _$args);
+    final ref =
+        this.ref as $Ref<AsyncValue<List<Aluno>>, AsyncValue<List<Aluno>>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<List<Aluno>>, AsyncValue<List<Aluno>>>,
+              AsyncValue<List<Aluno>>,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
 @ProviderFor(AlunosFiltro)
 const alunosFiltroProvider = AlunosFiltroProvider._();
 

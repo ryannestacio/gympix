@@ -48,7 +48,10 @@ class BuildPixPayloadUseCase {
   }
 
   String _buildPixTxid(String alunoId) {
-    final normalized = alunoId.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    final normalized = alunoId.toUpperCase().replaceAll(
+      RegExp(r'[^A-Z0-9]'),
+      '',
+    );
     if (normalized.isEmpty) return 'GYMPIX';
     final suffix = normalized.length <= 18
         ? normalized

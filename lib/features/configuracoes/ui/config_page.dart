@@ -1,13 +1,12 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_mode_provider.dart';
 import '../../../core/utils/currency_input_formatter.dart';
 import '../../auth/controllers/auth_controller.dart';
-import '../../cobranca/models/cobranca_regua.dart';
-import '../../cobranca/providers/cobranca_regua_providers.dart';
 import '../providers/config_providers.dart';
 
 class ConfigPage extends ConsumerStatefulWidget {
@@ -20,77 +19,12 @@ class ConfigPage extends ConsumerStatefulWidget {
 class _ConfigPageState extends ConsumerState<ConfigPage> {
   final _pixController = TextEditingController();
   final _mensalidadeController = TextEditingController();
-  final _customCobrancaController = TextEditingController();
-  final _templatePendenteController = TextEditingController();
-  final _templateAtrasadoController = TextEditingController();
-  bool _savingPix = false;
-  bool _savingMensalidade = false;
-  bool _savingCustomCobranca = false;
-  bool _savingRegua = false;
-  bool _showPixValue = false;
-  bool _editingPix = false;
-  bool _showMensalidadeValue = false;
-  bool _editingMensalidade = false;
-  bool _reguaAutomacaoAtiva = CobrancaReguaConfig.defaults.automacaoAtiva;
-  bool _reguaNotificacaoLocalAtiva =
-      CobrancaReguaConfig.defaults.notificacaoLocalAtiva;
-  bool _reguaNotificacaoPushAtiva =
-      CobrancaReguaConfig.defaults.notificacaoPushAtiva;
-  bool _stepDm3 = true;
-  bool _stepD0 = true;
-  bool _stepDp3 = true;
-  StreamSubscription<String?>? _customCobrancaSubscription;
-  StreamSubscription<CobrancaReguaConfig>? _reguaSubscription;
-
-  @override
-  void initState() {
-    super.initState();
-    _customCobrancaSubscription = ref
-        .read(configRepositoryProvider)
-        .watchCustomCobrancaMessage()
-        .listen((message) {
-          final nextValue = message ?? '';
-          if (_customCobrancaController.text.trim() != nextValue) {
-            _customCobrancaController.text = nextValue;
-          }
-        });
-    _reguaSubscription = ref
-        .read(cobrancaReguaRepositoryProvider)
-        .watchReguaConfig()
-        .listen(_applyReguaConfig);
-  }
 
   @override
   void dispose() {
-    _customCobrancaSubscription?.cancel();
-    _reguaSubscription?.cancel();
     _pixController.dispose();
     _mensalidadeController.dispose();
-    _customCobrancaController.dispose();
-    _templatePendenteController.dispose();
-    _templateAtrasadoController.dispose();
     super.dispose();
-  }
-
-  void _applyReguaConfig(CobrancaReguaConfig config) {
-    if (!mounted || _savingRegua) return;
-    final passos = {
-      for (final passo in config.passos) passo.diasRelativos: passo.ativo,
-    };
-    setState(() {
-      _reguaAutomacaoAtiva = config.automacaoAtiva;
-      _reguaNotificacaoLocalAtiva = config.notificacaoLocalAtiva;
-      _reguaNotificacaoPushAtiva = config.notificacaoPushAtiva;
-      _stepDm3 = passos[-3] ?? true;
-      _stepD0 = passos[0] ?? true;
-      _stepDp3 = passos[3] ?? true;
-      if (_templatePendenteController.text.trim() != config.templatePendente) {
-        _templatePendenteController.text = config.templatePendente;
-      }
-      if (_templateAtrasadoController.text.trim() != config.templateAtrasado) {
-        _templateAtrasadoController.text = config.templateAtrasado;
-      }
-    });
   }
 
   @override
@@ -98,21 +32,24 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final pixAsync = ref.watch(pixCodeStreamProvider);
-    final defaultMensalidadeAsync = ref.watch(defaultMensalidadeStreamProvider);
+    final mensalidadeAsync = ref.watch(defaultMensalidadeStreamProvider);
     final themeMode = ref.watch(themeModeProvider);
     final authAction = ref.watch(authControllerProvider);
 
+    final pixValue = _pixController.text.trim();
+    final mensalidadeValue = _mensalidadeController.text.trim();
+
     ref.listen(pixCodeStreamProvider, (_, next) {
       final pix = next.value;
-      if (!_editingPix && pix != null && _pixController.text.trim() != pix) {
+      if (pix != null && _pixController.text.trim() != pix) {
         _pixController.text = pix;
       }
     });
 
     ref.listen(defaultMensalidadeStreamProvider, (_, next) {
-      final v = next.value;
-      if (!_editingMensalidade && v != null) {
-        final asText = formatBrl(v);
+      final value = next.value;
+      if (value != null) {
+        final asText = formatBrl(value);
         if (_mensalidadeController.text.trim() != asText) {
           _mensalidadeController.text = asText;
         }
@@ -137,369 +74,57 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
             AppTheme.spacingXl,
           ),
           children: [
-            Text(
-              'Configurações',
-              style: textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingXs),
-            Text(
-              'Ajuste aparência, pagamentos e padrões do app.',
-              style: textTheme.bodyMedium?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
+            const _SettingsHeroCard(title: 'Configuracoes'),
             const SizedBox(height: AppTheme.spacingLg),
-            const _SectionHeader(title: 'Aparência', icon: Icons.palette_outlined),
-            const SizedBox(height: AppTheme.spacingSm),
-            _SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Tema visual',
-                    style: textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Escolha claro, escuro ou siga o sistema.',
-                    style: textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingMd),
-                  SegmentedButton<ThemeMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: ThemeMode.light,
-                        icon: Icon(Icons.light_mode_outlined, size: 18),
-                        label: Text('Claro'),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.dark,
-                        icon: Icon(Icons.dark_mode_outlined, size: 18),
-                        label: Text('Escuro'),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.system,
-                        icon: Icon(Icons.brightness_auto_rounded, size: 18),
-                        label: Text('Sistema'),
-                      ),
-                    ],
-                    selected: {themeMode},
-                    onSelectionChanged: (Set<ThemeMode> selected) {
-                      ref
-                          .read(themeModeProvider.notifier)
-                          .setThemeMode(selected.first);
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingLg),
-            const _SectionHeader(title: 'Pagamentos', icon: Icons.payment_outlined),
-            const SizedBox(height: AppTheme.spacingSm),
-            _SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Chave Pix (copia e cola)',
-                    style: textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Esta chave será usada nas mensagens de cobrança.',
-                    style: textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingSm),
-                  _SecureValueCard(
-                    title: 'Chave Pix salva',
-                    value: _maskPixValue(_pixController.text.trim()),
-                    hasValue: _pixController.text.trim().isNotEmpty,
-                    revealed: _showPixValue,
-                    revealedValue: _pixController.text.trim(),
-                    onToggleReveal: () {
-                      setState(() => _showPixValue = !_showPixValue);
-                    },
-                    onEdit: () {
-                      setState(() {
-                        _editingPix = !_editingPix;
-                        if (!_editingPix) {
-                          _showPixValue = false;
-                        }
-                      });
-                    },
-                    editLabel: _editingPix ? 'Fechar edição' : 'Editar chave',
-                  ),
-                  if (_editingPix) ...[
-                    const SizedBox(height: AppTheme.spacingSm),
-                    TextField(
-                      controller: _pixController,
-                      minLines: 5,
-                      maxLines: 8,
-                      textInputAction: TextInputAction.newline,
-                      decoration: const InputDecoration(
-                        hintText: 'Cole a chave Pix aqui...',
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: AppTheme.spacingSm),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: pixAsync.isLoading || _savingPix
-                          ? null
-                          : _onSalvarPix,
-                      child: Text(
-                        _savingPix ? 'Salvando...' : 'Salvar chave Pix',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingMd + 4),
-            const _SectionHeader(title: 'Valores', icon: Icons.attach_money_rounded),
-            const SizedBox(height: AppTheme.spacingSm),
-            _SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Mensalidade padrão',
-                    style: textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Valor sugerido ao cadastrar novo aluno.',
-                    style: textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingSm),
-                  _SecureValueCard(
-                    title: 'Valor salvo',
-                    value: _mensalidadeController.text.trim().isEmpty
-                        ? '--'
-                        : _maskedMoneyLabel(_mensalidadeController.text.trim()),
-                    hasValue: _mensalidadeController.text.trim().isNotEmpty,
-                    revealed: _showMensalidadeValue,
-                    revealedValue: _mensalidadeController.text.trim(),
-                    onToggleReveal: () {
-                      setState(() {
-                        _showMensalidadeValue = !_showMensalidadeValue;
-                      });
-                    },
-                    onEdit: () {
-                      setState(() {
-                        _editingMensalidade = !_editingMensalidade;
-                        if (!_editingMensalidade) {
-                          _showMensalidadeValue = false;
-                        }
-                      });
-                    },
-                    editLabel: _editingMensalidade
-                        ? 'Fechar edição'
-                        : 'Editar valor',
-                  ),
-                  if (_editingMensalidade) ...[
-                    const SizedBox(height: AppTheme.spacingSm),
-                    TextField(
-                      controller: _mensalidadeController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: const [BrlCurrencyInputFormatter()],
-                      decoration: const InputDecoration(
-                        hintText: 'Ex: R\$ 80,00',
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: AppTheme.spacingSm),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed:
-                          defaultMensalidadeAsync.isLoading ||
-                              _savingMensalidade
-                          ? null
-                          : _onSalvarMensalidade,
-                      child: Text(
-                        _savingMensalidade
-                            ? 'Salvando...'
-                            : 'Salvar mensalidade padrão',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingMd + 4),
-            const _SectionHeader(title: 'Mensagens', icon: Icons.message_outlined),
-            const SizedBox(height: AppTheme.spacingSm),
-            _SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Frase personalizada de cobrança',
-                    style: textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Esse texto será incluído nas mensagens de cobrança, depois do resumo da mensalidade.',
-                    style: textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingSm),
-                  TextField(
-                    controller: _customCobrancaController,
-                    minLines: 3,
-                    maxLines: 5,
-                    textInputAction: TextInputAction.newline,
-                    decoration: const InputDecoration(
-                      hintText:
-                          'Ex: Em caso de dúvida, entre em contato para regularização.',
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingSm),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _savingCustomCobranca
-                          ? null
-                          : _onSalvarMensagemCobranca,
-                      child: Text(
-                        _savingCustomCobranca
-                            ? 'Salvando...'
-                            : 'Salvar frase personalizada',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingMd + 4),
             const _SectionHeader(
-              title: 'Regua de cobranca',
-              icon: Icons.schedule_send_outlined,
+              title: 'Aparencia',
+              subtitle: 'Personalizacao de tema',
+              icon: Icons.palette_outlined,
             ),
             const SizedBox(height: AppTheme.spacingSm),
             _SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    value: _reguaAutomacaoAtiva,
-                    onChanged: (v) => setState(() => _reguaAutomacaoAtiva = v),
-                    title: const Text('Automacao ativa'),
-                    subtitle: const Text(
-                      'Dispara lembretes automaticamente por D-3, D0 e D+3.',
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    value: _reguaNotificacaoLocalAtiva,
-                    onChanged: (v) {
-                      setState(() => _reguaNotificacaoLocalAtiva = v);
-                    },
-                    title: const Text('Notificacao local'),
-                    subtitle: const Text(
-                      'Gera alerta local no aparelho quando a regra dispara.',
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  SwitchListTile.adaptive(
-                    contentPadding: EdgeInsets.zero,
-                    value: _reguaNotificacaoPushAtiva,
-                    onChanged: (v) =>
-                        setState(() => _reguaNotificacaoPushAtiva = v),
-                    title: const Text('Fila para push'),
-                    subtitle: const Text(
-                      'Registra o disparo para processamento externo de push.',
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingSm),
-                  Text(
-                    'Passos ativos',
-                    style: textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingXs),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      FilterChip(
-                        label: const Text('D-3'),
-                        selected: _stepDm3,
-                        onSelected: (v) => setState(() => _stepDm3 = v),
-                      ),
-                      FilterChip(
-                        label: const Text('D0'),
-                        selected: _stepD0,
-                        onSelected: (v) => setState(() => _stepD0 = v),
-                      ),
-                      FilterChip(
-                        label: const Text('D+3'),
-                        selected: _stepDp3,
-                        onSelected: (v) => setState(() => _stepDp3 = v),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppTheme.spacingSm),
-                  TextField(
-                    controller: _templatePendenteController,
-                    minLines: 2,
-                    maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Template pendente',
-                      hintText:
-                          'Use {nome}, {competencia}, {valor}, {vencimento}, {dias_label}, {pix}, {link}',
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingSm),
-                  TextField(
-                    controller: _templateAtrasadoController,
-                    minLines: 2,
-                    maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Template atrasado',
-                      hintText:
-                          'Use {nome}, {competencia}, {valor}, {vencimento}, {dias_label}, {pix}, {link}',
-                    ),
-                  ),
-                  const SizedBox(height: AppTheme.spacingSm),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _savingRegua ? null : _onSalvarRegua,
-                      child: Text(
-                        _savingRegua ? 'Salvando...' : 'Salvar regua',
-                      ),
-                    ),
-                  ),
-                ],
+              accentColor: scheme.primary,
+              child: _ThemeModeSwitch(
+                selectedMode: themeMode,
+                onChanged: (mode) {
+                  ref.read(themeModeProvider.notifier).setThemeMode(mode);
+                },
               ),
             ),
             const SizedBox(height: AppTheme.spacingLg),
-            const _SectionHeader(title: 'Sistema', icon: Icons.info_outline_rounded),
+            const _SectionHeader(
+              title: 'Pagamentos',
+              subtitle: 'Pix e valores padrao',
+              icon: Icons.payment_outlined,
+            ),
+            const SizedBox(height: AppTheme.spacingSm),
+            _PaymentOptionCard(
+              icon: Icons.qr_code_2_outlined,
+              title: 'Chave Pix',
+              subtitle: pixValue.isEmpty
+                  ? 'Defina a chave usada nas cobrancas.'
+                  : 'Chave cadastrada e pronta para uso.',
+              onTap: () => _openPixSheet(isLoading: pixAsync.isLoading),
+            ),
+            const SizedBox(height: AppTheme.spacingSm),
+            _PaymentOptionCard(
+              icon: Icons.attach_money_rounded,
+              title: 'Mensalidade padrao',
+              subtitle: mensalidadeValue.isEmpty
+                  ? 'Defina o valor sugerido no cadastro de alunos.'
+                  : 'Valor atual: $mensalidadeValue',
+              onTap: () =>
+                  _openMensalidadeSheet(isLoading: mensalidadeAsync.isLoading),
+            ),
+            const SizedBox(height: AppTheme.spacingLg),
+            const _SectionHeader(
+              title: 'Sistema',
+              subtitle: 'Sessao e informacoes do app',
+              icon: Icons.info_outline_rounded,
+            ),
             const SizedBox(height: AppTheme.spacingSm),
             _SectionCard(
+              accentColor: scheme.secondary,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -507,15 +132,26 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Versão do app',
+                        'Versao do app',
                         style: textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      Text(
-                        '1.0.0',
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spacingSm,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: scheme.primaryContainer.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '1.0.0',
+                          style: textTheme.labelMedium?.copyWith(
+                            color: scheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
@@ -529,6 +165,12 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
                           : () => ref
                                 .read(authControllerProvider.notifier)
                                 .signOut(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: scheme.error,
+                        side: BorderSide(
+                          color: scheme.error.withValues(alpha: 0.3),
+                        ),
+                      ),
                       icon: authAction.isLoading
                           ? const SizedBox(
                               width: 16,
@@ -548,141 +190,211 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
     );
   }
 
-  Future<void> _onSalvarPix() async {
-    final pix = _pixController.text.trim();
+  Future<void> _openPixSheet({required bool isLoading}) async {
+    if (isLoading) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        var saving = false;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Future<void> submit() async {
+              if (saving) return;
+              setModalState(() => saving = true);
+              final ok = await _savePix(_pixController.text.trim());
+              if (context.mounted) setModalState(() => saving = false);
+              if (ok && context.mounted) Navigator.of(context).pop();
+            }
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppTheme.spacingLg,
+                AppTheme.spacingSm,
+                AppTheme.spacingLg,
+                AppTheme.spacingLg +
+                    MediaQuery.of(sheetContext).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Chave Pix',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacingSm),
+                  TextField(
+                    controller: _pixController,
+                    minLines: 5,
+                    maxLines: 8,
+                    textInputAction: TextInputAction.newline,
+                    decoration: const InputDecoration(
+                      hintText: 'Cole a chave Pix aqui...',
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacingMd),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: saving ? null : submit,
+                      icon: saving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.save_outlined, size: 18),
+                      label: Text(saving ? 'Salvando...' : 'Salvar chave Pix'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _openMensalidadeSheet({required bool isLoading}) async {
+    if (isLoading) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        var saving = false;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Future<void> submit() async {
+              if (saving) return;
+              setModalState(() => saving = true);
+              final ok = await _saveMensalidade(
+                _mensalidadeController.text.trim(),
+              );
+              if (context.mounted) setModalState(() => saving = false);
+              if (ok && context.mounted) Navigator.of(context).pop();
+            }
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppTheme.spacingLg,
+                AppTheme.spacingSm,
+                AppTheme.spacingLg,
+                AppTheme.spacingLg +
+                    MediaQuery.of(sheetContext).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Mensalidade padrao',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacingSm),
+                  TextField(
+                    controller: _mensalidadeController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: const [BrlCurrencyInputFormatter()],
+                    decoration: const InputDecoration(
+                      hintText: 'Ex: R\$ 80,00',
+                    ),
+                  ),
+                  const SizedBox(height: AppTheme.spacingMd),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: saving ? null : submit,
+                      icon: saving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.save_outlined, size: 18),
+                      label: Text(
+                        saving ? 'Salvando...' : 'Salvar mensalidade padrao',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<bool> _savePix(String pix) async {
     if (pix.isEmpty) {
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Informe um código Pix válido.')),
+        const SnackBar(content: Text('Informe uma chave Pix valida.')),
       );
-      return;
+      return false;
     }
 
-    setState(() => _savingPix = true);
     final pendingTimer = _schedulePendingSyncFeedback(
       'Chave Pix salva localmente. A sincronizacao pode levar alguns segundos.',
     );
     try {
       await ref.read(configRepositoryProvider).setPixCode(pix);
-      if (!mounted) return;
-      setState(() {
-        _editingPix = false;
-        _showPixValue = false;
-      });
+      if (!mounted) return false;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Chave Pix salva.')));
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Erro ao salvar Pix: $e')));
+      return false;
     } finally {
       pendingTimer.cancel();
-      if (mounted) setState(() => _savingPix = false);
     }
   }
 
-  Future<void> _onSalvarMensalidade() async {
-    final value = parseBrlCurrency(_mensalidadeController.text.trim());
+  Future<bool> _saveMensalidade(String valueAsText) async {
+    final value = parseBrlCurrency(valueAsText);
     if (value == null || value <= 0) {
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Valor de mensalidade inválido.')),
+        const SnackBar(content: Text('Valor de mensalidade invalido.')),
       );
-      return;
+      return false;
     }
 
-    setState(() => _savingMensalidade = true);
     final pendingTimer = _schedulePendingSyncFeedback(
       'Mensalidade salva localmente. A sincronizacao pode levar alguns segundos.',
     );
     try {
       await ref.read(configRepositoryProvider).setDefaultMensalidade(value);
-      if (!mounted) return;
-      setState(() {
-        _editingMensalidade = false;
-        _showMensalidadeValue = false;
-      });
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mensalidade padrão salva.')),
+        const SnackBar(content: Text('Mensalidade padrao salva.')),
       );
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Erro ao salvar mensalidade: $e')));
+      return false;
     } finally {
       pendingTimer.cancel();
-      if (mounted) setState(() => _savingMensalidade = false);
-    }
-  }
-
-  Future<void> _onSalvarMensagemCobranca() async {
-    final value = _customCobrancaController.text.trim();
-
-    setState(() => _savingCustomCobranca = true);
-    final pendingTimer = _schedulePendingSyncFeedback(
-      'Frase salva localmente. A sincronizacao pode levar alguns segundos.',
-    );
-    try {
-      await ref.read(configRepositoryProvider).setCustomCobrancaMessage(value);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Frase personalizada salva.')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao salvar frase: $e')));
-    } finally {
-      pendingTimer.cancel();
-      if (mounted) setState(() => _savingCustomCobranca = false);
-    }
-  }
-
-  Future<void> _onSalvarRegua() async {
-    if (!_stepDm3 && !_stepD0 && !_stepDp3) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ative pelo menos um passo da regua (D-3, D0 ou D+3).'),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _savingRegua = true);
-    final pendingTimer = _schedulePendingSyncFeedback(
-      'Regua salva localmente. A sincronizacao pode levar alguns segundos.',
-    );
-    try {
-      final atual = await ref
-          .read(cobrancaReguaRepositoryProvider)
-          .getReguaConfig();
-      final novaRegua = atual.copyWith(
-        automacaoAtiva: _reguaAutomacaoAtiva,
-        notificacaoLocalAtiva: _reguaNotificacaoLocalAtiva,
-        notificacaoPushAtiva: _reguaNotificacaoPushAtiva,
-        passos: [
-          CobrancaReguaStep(diasRelativos: -3, ativo: _stepDm3),
-          CobrancaReguaStep(diasRelativos: 0, ativo: _stepD0),
-          CobrancaReguaStep(diasRelativos: 3, ativo: _stepDp3),
-        ],
-        templatePendente: _templatePendenteController.text.trim(),
-        templateAtrasado: _templateAtrasadoController.text.trim(),
-      );
-      await ref.read(cobrancaReguaRepositoryProvider).setReguaConfig(novaRegua);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Regua de cobranca salva com sucesso.')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao salvar regua: $e')));
-    } finally {
-      pendingTimer.cancel();
-      if (mounted) setState(() => _savingRegua = false);
     }
   }
 
@@ -694,24 +406,71 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
       ).showSnackBar(SnackBar(content: Text(message)));
     });
   }
+}
 
-  String _maskPixValue(String value) {
-    if (value.isEmpty) return 'Nenhuma chave Pix configurada';
-    if (value.length <= 12) return '••••••••';
-    final start = value.substring(0, 8);
-    final end = value.substring(value.length - 6);
-    return '$start••••••••••••$end';
-  }
+class _SettingsHeroCard extends StatelessWidget {
+  const _SettingsHeroCard({required this.title});
 
-  String _maskedMoneyLabel(String value) {
-    if (value.isEmpty) return '--';
-    return '••••••';
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppTheme.spacingLg),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            scheme.primaryContainer.withValues(alpha: 0.95),
+            scheme.primaryContainer.withValues(alpha: 0.70),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppTheme.spacingSm),
+            decoration: BoxDecoration(
+              color: scheme.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+            ),
+            child: Icon(
+              Icons.settings_outlined,
+              size: 22,
+              color: scheme.primary,
+            ),
+          ),
+          const SizedBox(width: AppTheme.spacingSm),
+          Expanded(
+            child: Text(
+              title,
+              style: textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, required this.icon});
+  const _SectionHeader({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+
   final String title;
+  final String subtitle;
   final IconData icon;
 
   @override
@@ -719,12 +478,36 @@ class _SectionHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: scheme.primary),
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: scheme.primaryContainer.withValues(alpha: 0.75),
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          ),
+          child: Icon(icon, size: 18, color: scheme.primary),
+        ),
         const SizedBox(width: AppTheme.spacingXs),
-        Text(
-          title,
-          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -732,107 +515,249 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.child});
+  const _SectionCard({required this.child, this.accentColor});
+
   final Widget child;
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final resolvedAccent = accentColor ?? scheme.primary;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppTheme.spacingLg - 4),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.28)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
-            blurRadius: 12,
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.06),
+            blurRadius: isDark ? 16 : 12,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: child,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            height: 4,
+            color: resolvedAccent.withValues(alpha: 0.85),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(AppTheme.spacingLg - 4),
+            child: child,
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _SecureValueCard extends StatelessWidget {
-  const _SecureValueCard({
-    required this.title,
-    required this.value,
-    required this.hasValue,
-    required this.revealed,
-    required this.revealedValue,
-    required this.onToggleReveal,
-    required this.onEdit,
-    required this.editLabel,
+class _ThemeModeSwitch extends StatelessWidget {
+  const _ThemeModeSwitch({required this.selectedMode, required this.onChanged});
+
+  final ThemeMode selectedMode;
+  final ValueChanged<ThemeMode> onChanged;
+
+  static const _items = <_ThemeModeItem>[
+    _ThemeModeItem(
+      mode: ThemeMode.light,
+      label: 'Claro',
+      icon: Icons.light_mode_outlined,
+    ),
+    _ThemeModeItem(
+      mode: ThemeMode.dark,
+      label: 'Escuro',
+      icon: Icons.dark_mode_outlined,
+    ),
+    _ThemeModeItem(
+      mode: ThemeMode.system,
+      label: 'Sistema',
+      icon: Icons.brightness_auto_rounded,
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        children: _items.map((item) {
+          final selected = item.mode == selectedMode;
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  onTap: () => onChanged(item.mode),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? scheme.primary.withValues(alpha: 0.14)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                      boxShadow: selected
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.20 : 0.05,
+                                ),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : const [],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          item.icon,
+                          size: 16,
+                          color: selected
+                              ? scheme.primary
+                              : scheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          item.label,
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: selected
+                                    ? scheme.primary
+                                    : scheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _ThemeModeItem {
+  const _ThemeModeItem({
+    required this.mode,
+    required this.label,
+    required this.icon,
   });
 
+  final ThemeMode mode;
+  final String label;
+  final IconData icon;
+}
+
+class _PaymentOptionCard extends StatelessWidget {
+  const _PaymentOptionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
   final String title;
-  final String value;
-  final bool hasValue;
-  final bool revealed;
-  final String revealedValue;
-  final VoidCallback onToggleReveal;
-  final VoidCallback onEdit;
-  final String editLabel;
+  final String subtitle;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingMd),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              if (hasValue)
-                IconButton(
-                  tooltip: revealed ? 'Ocultar' : 'Mostrar',
-                  onPressed: onToggleReveal,
-                  icon: Icon(
-                    revealed
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    size: 20,
-                  ),
-                ),
-            ],
-          ),
-          Text(
-            hasValue ? (revealed ? revealedValue : value) : value,
-            style: textTheme.bodyMedium?.copyWith(
-              color: hasValue ? scheme.onSurface : scheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: AppTheme.spacingSm),
-          Align(
-            alignment: Alignment.centerRight,
-            child: OutlinedButton.icon(
-              onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              label: Text(editLabel),
-            ),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.26 : 0.06),
+            blurRadius: isDark ? 14 : 10,
+            offset: const Offset(0, 2),
           ),
         ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          child: Padding(
+            padding: const EdgeInsets.all(AppTheme.spacingMd),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.spacingXs),
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  ),
+                  child: Icon(icon, size: 20, color: scheme.primary),
+                ),
+                const SizedBox(width: AppTheme.spacingSm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacingSm),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: scheme.onSurfaceVariant,
+                  size: 24,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
