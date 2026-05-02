@@ -1,8 +1,14 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Formata exceoes do Firestore em mensagens humanizadas para o usuario final.
 /// Padronizado conforme o modelo de _firebaseErrorMessage do AuthRepository.
 String formatFirestoreError(Object error) {
+  if (error is TimeoutException) {
+    return 'Tempo de resposta excedido. Verifique a conexao e tente novamente.';
+  }
+
   if (error is! FirebaseException) {
     return 'Ocorreu um erro inesperado. Tente novamente.';
   }
@@ -11,10 +17,12 @@ String formatFirestoreError(Object error) {
     // Rede e disponibilidade
     'unavailable' =>
       'Servico temporariamente indisponivel. Verifique sua conexao e tente novamente.',
-    'deadline-exceeded' =>
-      'Tempo de resposta excedido. Tentando novamente...',
+    'deadline-exceeded' => 'Tempo de resposta excedido. Tente novamente.',
     'network-request-failed' =>
       'Falha de rede. Verifique sua conexao e tente novamente.',
+    'failed-precondition' =>
+      'Sincronizacao pendente no dispositivo. Tente novamente em instantes.',
+    'unimplemented' => 'Sincronizacao offline nao disponivel neste ambiente.',
 
     // Autorizacao
     'permission-denied' => 'Voce nao tem permissao para realizar esta acao.',

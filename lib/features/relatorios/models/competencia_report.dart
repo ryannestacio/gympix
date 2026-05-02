@@ -1,3 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../../../core/constants/firestore_fields.dart';
 import '../../alunos/models/aluno.dart';
 
 class CompetenciaReportItem {
@@ -228,9 +231,11 @@ class CompetenciaReportData {
 
     return CompetenciaReportData(
       competencia: map['competencia'] as String? ?? '',
-      fechada: (map['status'] as String? ?? '') == 'fechado',
+      fechada:
+          (map[FirestoreFields.status] as String? ?? '') ==
+          FirestoreStatus.fechado,
       fechadoEm: _parseDate(map['fechadoEm']),
-      schemaVersion: (map['schemaVersion'] as num?)?.toInt() ?? 1,
+      schemaVersion: (map[FirestoreFields.schemaVersion] as num?)?.toInt() ?? 1,
       totais: CompetenciaReportTotals.fromMap(
         Map<String, dynamic>.from(map['totais'] as Map? ?? const {}),
       ),
@@ -259,9 +264,11 @@ class CompetenciaReportData {
   Map<String, Object?> toFirestore() {
     return {
       'competencia': competencia,
-      'status': fechada ? 'fechado' : 'aberto',
-      'fechadoEm': fechadoEm?.toIso8601String(),
-      'schemaVersion': schemaVersion,
+      FirestoreFields.status: fechada
+          ? FirestoreStatus.fechado
+          : FirestoreStatus.aberto,
+      'fechadoEm': fechadoEm == null ? null : Timestamp.fromDate(fechadoEm!),
+      FirestoreFields.schemaVersion: schemaVersion,
       'totais': totais.toMap(),
       'alunosSnapshot': alunosSnapshot.map((item) => item.toMap()).toList(),
     };
@@ -269,6 +276,7 @@ class CompetenciaReportData {
 }
 
 DateTime? _parseDate(dynamic value) {
+  if (value is Timestamp) return value.toDate();
   if (value is String && value.isNotEmpty) {
     return DateTime.tryParse(value);
   }

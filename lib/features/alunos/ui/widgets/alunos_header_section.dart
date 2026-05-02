@@ -68,7 +68,7 @@ class AlunosHeaderSection extends StatelessWidget {
                 ),
               ),
               PopupMenuButton<String>(
-                tooltip: 'Exportar visao atual',
+                tooltip: 'Exportar vis\u00e3o atual',
                 onSelected: (value) {
                   if (value == 'csv') onExportCsv();
                   if (value == 'pdf') onExportPdf();
@@ -119,7 +119,7 @@ class AlunosHeaderSection extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Cadastro, cobranca e status mensal em um so lugar.',
+            'Cadastro, cobran\u00e7a e status mensal em um s\u00f3 lugar.',
             style: textTheme.bodyMedium?.copyWith(
               color: scheme.onSurfaceVariant,
             ),
@@ -471,8 +471,8 @@ class SyncStatusChip extends StatelessWidget {
     final label = isSyncing
         ? 'Sincronizando...'
         : lastSyncAt == null
-        ? 'Aguardando sincronizacao'
-        : 'Atualizado as ${DateFormat('HH:mm').format(lastSyncAt!)}';
+        ? 'Aguardando sincroniza\u00e7\u00e3o'
+        : 'Atualizado \u00e0s ${DateFormat('HH:mm').format(lastSyncAt!)}';
     final color = isSyncing ? scheme.primary : scheme.onSurfaceVariant;
 
     return Container(
@@ -581,7 +581,7 @@ class EmptyAlunosState extends StatelessWidget {
         ),
         const SizedBox(height: AppTheme.spacingXs),
         Text(
-          'Toque em + Novo aluno para comecar',
+          'Toque em + Novo aluno para come\u00e7ar',
           style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
         ),
         const SizedBox(height: AppTheme.spacingMd),

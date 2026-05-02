@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gympix/core/utils/firestore_error_formatter.dart';
@@ -15,6 +17,11 @@ void main() {
     test('retorna mensagem generica para nao-FirebaseException', () {
       final result = formatFirestoreError(Exception('generic error'));
       expect(result, 'Ocorreu um erro inesperado. Tente novamente.');
+    });
+
+    test('retorna mensagem de timeout para TimeoutException', () {
+      final result = formatFirestoreError(TimeoutException('timeout'));
+      expect(result, contains('Tempo de resposta excedido'));
     });
 
     test('codigo unavailable retorna mensagem de conexao', () {
@@ -58,6 +65,20 @@ void main() {
         _makeException(code: 'resource-exhausted'),
       );
       expect(result, contains('Limite de operacoes excedido'));
+    });
+
+    test('codigo failed-precondition retorna mensagem de sincronizacao', () {
+      final result = formatFirestoreError(
+        _makeException(code: 'failed-precondition'),
+      );
+      expect(result, contains('Sincronizacao pendente'));
+    });
+
+    test('codigo unimplemented retorna mensagem de recurso indisponivel', () {
+      final result = formatFirestoreError(
+        _makeException(code: 'unimplemented'),
+      );
+      expect(result, contains('offline'));
     });
   });
 }

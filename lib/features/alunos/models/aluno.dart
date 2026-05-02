@@ -177,7 +177,12 @@ class Aluno {
       referenciaCompetencia,
     );
 
-    if (pagoLegado == true && competencia == competenciaAtualRef) {
+    // `pagoLegado` existe apenas para compatibilidade com dados antigos.
+    // Se ja houver historico mensal em `pagamentos`, nunca usamos esse fallback
+    // para evitar "vazamento" de status pago para competencias futuras.
+    if (pagoLegado == true &&
+        pagamentos.isEmpty &&
+        competencia == competenciaAtualRef) {
       return PagamentoMensal(
         competencia: competencia,
         valor: mensalidade,

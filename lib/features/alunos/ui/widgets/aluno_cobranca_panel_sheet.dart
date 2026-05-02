@@ -55,7 +55,7 @@ class AlunoCobrancaPanelSheet extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Painel de cobranca - ${aluno.nome}',
+          'Painel de cobran\u00e7a - ${aluno.nome}',
           style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: AppTheme.spacingSm),
@@ -77,7 +77,7 @@ class AlunoCobrancaPanelSheet extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Competencia ${pagamento.competencia} - Vencimento dia ${vencimento.day.toString().padLeft(2, '0')} - Valor ${_currencyFormatter.format(pagamento.valor)}',
+                'Compet\u00eancia ${pagamento.competencia} - Vencimento dia ${vencimento.day.toString().padLeft(2, '0')} - Valor ${_currencyFormatter.format(pagamento.valor)}',
                 style: textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
@@ -87,7 +87,7 @@ class AlunoCobrancaPanelSheet extends ConsumerWidget {
         ),
         const SizedBox(height: AppTheme.spacingSm),
         Text(
-          'Regua configurada',
+          'R\u00e9gua configurada',
           style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: AppTheme.spacingXs),
@@ -112,7 +112,7 @@ class AlunoCobrancaPanelSheet extends ConsumerWidget {
         ),
         const SizedBox(height: AppTheme.spacingMd),
         Text(
-          'Historico de envios',
+          'Hist\u00f3rico de envios',
           style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: AppTheme.spacingXs),
@@ -203,7 +203,7 @@ class _EnvioTile extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Competencia ${envio.competencia} - ${_offsetLabel(envio.diasRelativos)}',
+            'Compet\u00eancia ${envio.competencia} - ${_offsetLabel(envio.diasRelativos)}',
             style: textTheme.bodySmall?.copyWith(
               color: scheme.onSurfaceVariant,
             ),
@@ -222,11 +222,11 @@ class _EnvioTile extends StatelessWidget {
 
   String _canalLabel(CobrancaCanal canal) {
     return switch (canal) {
-      CobrancaCanal.manualCopia => 'Manual (copia)',
+      CobrancaCanal.manualCopia => 'Manual (c\u00f3pia)',
       CobrancaCanal.manualCompartilhamento => 'Manual (compartilhar)',
       CobrancaCanal.manualWhatsapp => 'Manual (WhatsApp)',
-      CobrancaCanal.automacaoLocal => 'Automacao local',
-      CobrancaCanal.automacaoPush => 'Automacao push',
+      CobrancaCanal.automacaoLocal => 'Automa\u00e7\u00e3o local',
+      CobrancaCanal.automacaoPush => 'Automa\u00e7\u00e3o push',
     };
   }
 

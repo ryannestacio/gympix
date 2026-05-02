@@ -36,6 +36,25 @@ void main() {
       final button = tester.widget<FilledButton>(find.byType(FilledButton));
       expect(button.onPressed, isNotNull);
     });
+
+    testWidgets('abre dialog de confirmacao ao tocar em Sair da conta', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(_buildApp());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Sair da conta'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tem certeza que deseja sair agora?'), findsOneWidget);
+      expect(find.text('Cancelar'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Sair'), findsOneWidget);
+
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tem certeza que deseja sair agora?'), findsNothing);
+    });
   });
 }
 

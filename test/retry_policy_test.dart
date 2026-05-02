@@ -12,11 +12,21 @@ void main() {
       expect(RetryPolicy.standard.maxRetries, 3);
       expect(RetryPolicy.standard.baseDelay, const Duration(milliseconds: 500));
       expect(RetryPolicy.standard.backoffMultiplier, 2.0);
+      expect(RetryPolicy.standard.attemptTimeout, const Duration(seconds: 8));
+      expect(
+        RetryPolicy.standard.maxTotalDuration,
+        const Duration(seconds: 30),
+      );
     });
 
     test('critical tem valores mais agressivos', () {
       expect(RetryPolicy.critical.maxRetries, 4);
       expect(RetryPolicy.critical.baseDelay, const Duration(milliseconds: 300));
+      expect(RetryPolicy.critical.attemptTimeout, const Duration(seconds: 6));
+      expect(
+        RetryPolicy.critical.maxTotalDuration,
+        const Duration(seconds: 20),
+      );
     });
   });
 
@@ -102,6 +112,74 @@ void main() {
           throw _makeException('');
         }),
         throwsA(isA<FirebaseException>()),
+      );
+    });
+
+    test('transforma timeout em deadline-exceeded', () async {
+      final policy = RetryPolicy(
+        maxRetries: 0,
+        attemptTimeout: const Duration(milliseconds: 10),
+        maxTotalDuration: const Duration(milliseconds: 40),
+      );
+
+      await expectLater(
+        () async => policy.execute(() async {
+          await Future<void>.delayed(const Duration(milliseconds: 30));
+        }),
+        throwsA(
+          isA<FirebaseException>().having(
+            (e) => e.code,
+            'code',
+            'deadline-exceeded',
+          ),
+        ),
+      );
+    });
+
+    test('retenta quando uma tentativa excede o timeout', () async {
+      var attempt = 0;
+      final policy = RetryPolicy(
+        maxRetries: 1,
+        baseDelay: const Duration(milliseconds: 1),
+        maxDelay: const Duration(milliseconds: 1),
+        backoffMultiplier: 1,
+        attemptTimeout: const Duration(milliseconds: 10),
+        maxTotalDuration: const Duration(milliseconds: 300),
+      );
+
+      final result = await policy.execute<String>(() async {
+        attempt++;
+        if (attempt == 1) {
+          await Future<void>.delayed(const Duration(milliseconds: 30));
+        }
+        return 'ok';
+      });
+
+      expect(result, 'ok');
+      expect(attempt, 2);
+    });
+
+    test('encerra quando estoura tempo total da operacao', () async {
+      final policy = RetryPolicy(
+        maxRetries: 100,
+        baseDelay: const Duration(milliseconds: 5),
+        maxDelay: const Duration(milliseconds: 5),
+        backoffMultiplier: 1,
+        attemptTimeout: const Duration(milliseconds: 5),
+        maxTotalDuration: const Duration(milliseconds: 25),
+      );
+
+      await expectLater(
+        () async => policy.execute(() async {
+          throw _makeException('unavailable');
+        }),
+        throwsA(
+          isA<FirebaseException>().having(
+            (e) => e.code,
+            'code',
+            'deadline-exceeded',
+          ),
+        ),
       );
     });
   });

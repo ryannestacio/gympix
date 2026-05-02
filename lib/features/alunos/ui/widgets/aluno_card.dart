@@ -14,6 +14,7 @@ import '../../../../core/domain/inadimplencia_config.dart';
 import '../../../../core/domain/inadimplencia_status.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_theme_extensions.dart';
+import '../../../../core/utils/firestore_error_formatter.dart';
 import '../../../configuracoes/providers/config_providers.dart';
 import '../../controllers/alunos_actions_controller.dart';
 import '../../models/aluno.dart';
@@ -111,14 +112,14 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
     final mensalidadeLabel = _formatCurrency(
       resultado.pagamentoEncontrado?.valor ?? aluno.mensalidade,
     );
-    final statusColor = _inadimplenciaColor(resultado.status, context);
-    final statusLabelText = resultado.status.detailedLabel(
-      diasRestantes: resultado.diasRestantes,
-      diasAtraso: resultado.diasAtraso,
-    );
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final referencia = DateTime.now();
     final referenciaStatus = Aluno.referenciaStatusDaCompetencia(referencia);
+    final competenciaAtual = Aluno.competenciaAtual(referencia);
+    final pagamentoAtual = aluno.pagamentoDaCompetencia(
+      competenciaAtual,
+      referenciaStatus: referenciaStatus,
+    );
     final competenciasEmAberto = aluno.totalCompetenciasEmAbertoAte(
       referencia,
       referenciaStatus: referenciaStatus,
@@ -127,7 +128,24 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       referencia,
       referenciaStatus: referenciaStatus,
     );
-    final mostrarQuitarPendencias = competenciasEmAberto > 1;
+    final possuiDebitoRetroativo =
+        pagamentoAtual.pago && competenciasEmAberto > 0;
+    final pendenciasLabel = competenciasEmAberto == 1
+        ? 'pendência'
+        : 'pendências';
+    final statusColor = possuiDebitoRetroativo
+        ? scheme.error
+        : _inadimplenciaColor(resultado.status, context);
+    final statusLabelText = possuiDebitoRetroativo
+        ? (competenciasEmAberto == 1
+              ? 'Débito retroativo'
+              : 'Débitos retroativos')
+        : resultado.status.detailedLabel(
+            diasRestantes: resultado.diasRestantes,
+            diasAtraso: resultado.diasAtraso,
+          );
+    final mostrarQuitarPendencias =
+        possuiDebitoRetroativo || competenciasEmAberto > 1;
 
     return Container(
       padding: const EdgeInsets.all(AppTheme.spacingLg - 4),
@@ -189,7 +207,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
                       children: [
                         Icon(Icons.copy_all_rounded, size: 20),
                         SizedBox(width: 12),
-                        Text('Copiar cobranca'),
+                        Text('Copiar cobran\u00e7a'),
                       ],
                     ),
                   ),
@@ -199,7 +217,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
                       children: [
                         Icon(Icons.history_rounded, size: 20),
                         SizedBox(width: 12),
-                        Text('Historico mensal'),
+                        Text('Hist\u00f3rico mensal'),
                       ],
                     ),
                   ),
@@ -489,7 +507,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
                         onPressed: _busy ? null : _onQuitarPendenciasAcumuladas,
                         icon: const Icon(Icons.done_all_rounded, size: 18),
                         label: Text(
-                          'Quitar $competenciasEmAberto pendencias (${_formatCurrency(valorEmAberto)})',
+                          'Quitar $competenciasEmAberto $pendenciasLabel (${_formatCurrency(valorEmAberto)})',
                         ),
                       ),
                     ),
@@ -523,7 +541,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       if (!mounted || !_runningOperations.contains(operationId)) return;
       showedPendingFeedback = true;
       _showCardFeedback(
-        'Sincronizando alteracao...',
+        'Sincronizando altera\u00e7\u00e3o...',
         color: Theme.of(context).colorScheme.primary,
         markSynced: false,
         autoHideAfter: null,
@@ -550,7 +568,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erro: $e')));
+      ).showSnackBar(SnackBar(content: Text(formatFirestoreError(e))));
     } finally {
       pendingTimer.cancel();
       if (mounted) {
@@ -618,7 +636,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       operationId: 'aluno:${aluno.id}:atualizar',
       successMessage: 'Aluno atualizado.',
       pendingMessage:
-          'Aluno atualizado localmente. A sincronizacao pode levar alguns segundos.',
+          'Aluno atualizado localmente. A sincroniza\u00e7\u00e3o pode levar alguns segundos.',
       cardMessage: 'Aluno atualizado',
     );
   }
@@ -644,16 +662,17 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       operationId: 'aluno:${aluno.id}:duplicar',
       successMessage: 'Cadastro duplicado.',
       pendingMessage:
-          'Cadastro criado localmente. A sincronizacao pode levar alguns segundos.',
+          'Cadastro criado localmente. A sincroniza\u00e7\u00e3o pode levar alguns segundos.',
       cardMessage: 'Cadastro duplicado',
     );
   }
 
   Future<void> _onCobrar() async {
     final pixPayload = await _buildPixPayloadOrShowError(
-      emptyMessage: 'Configure o Pix em Configuracoes antes de cobrar.',
+      emptyMessage:
+          'Configure o Pix em Configura\u00e7\u00f5es antes de cobrar.',
       unavailableMessage:
-          'Nao foi possivel carregar o Pix agora. Tente novamente em alguns segundos.',
+          'N\u00e3o foi poss\u00edvel carregar o Pix agora. Tente novamente em alguns segundos.',
     );
     if (pixPayload == null) return;
 
@@ -744,7 +763,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Pix copia e cola',
+                  'Pix c\u00f3pia e cola',
                   style: Theme.of(
                     context,
                   ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -763,7 +782,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
                       child: FilledButton.icon(
                         onPressed: () => _copyPixPayload(
                           pixPayload,
-                          successMessage: 'Codigo Pix copiado.',
+                          successMessage: 'C\u00f3digo Pix copiado.',
                         ),
                         icon: const Icon(Icons.copy_rounded, size: 18),
                         label: const Text('Copiar'),
@@ -795,11 +814,11 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
                     await Clipboard.setData(ClipboardData(text: lembrete));
                     if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Cobranca copiada.')),
+                      const SnackBar(content: Text('Cobran\u00e7a copiada.')),
                     );
                   },
                   icon: const Icon(Icons.copy_all_rounded, size: 18),
-                  label: const Text('Copiar cobranca'),
+                  label: const Text('Copiar cobran\u00e7a'),
                 ),
               ],
             ),
@@ -812,9 +831,9 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
   Future<void> _onCopiarCobranca() async {
     final pixPayload = await _buildPixPayloadOrShowError(
       emptyMessage:
-          'Configure o Pix em Configuracoes antes de copiar a cobranca.',
+          'Configure o Pix em Configura\u00e7\u00f5es antes de copiar a cobran\u00e7a.',
       unavailableMessage:
-          'Nao foi possivel carregar o Pix agora. Tente novamente em alguns segundos.',
+          'N\u00e3o foi poss\u00edvel carregar o Pix agora. Tente novamente em alguns segundos.',
     );
     if (pixPayload == null) return;
 
@@ -822,11 +841,11 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
     await Clipboard.setData(ClipboardData(text: mensagem));
     if (!mounted) return;
     _showCardFeedback(
-      'Cobranca copiada',
+      'Cobran\u00e7a copiada',
       color: Theme.of(context).colorScheme.primary,
     );
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Mensagem de cobranca copiada.')),
+      const SnackBar(content: Text('Mensagem de cobran\u00e7a copiada.')),
     );
   }
 
@@ -836,7 +855,9 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('Desfazer pagamento'),
-          content: const Text('Deseja marcar o mes atual como nao pago?'),
+          content: const Text(
+            'Deseja marcar o m\u00eas atual como n\u00e3o pago?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -863,9 +884,9 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
         },
         operationId:
             'aluno:${aluno.id}:pagamento:desfazer:${Aluno.competenciaAtual()}',
-        successMessage: 'Pagamento desfeito para o mes atual.',
+        successMessage: 'Pagamento desfeito para o m\u00eas atual.',
         pendingMessage:
-            'Pagamento desfeito localmente. A sincronizacao pode levar alguns segundos.',
+            'Pagamento desfeito localmente. A sincroniza\u00e7\u00e3o pode levar alguns segundos.',
         cardMessage: 'Pagamento desfeito',
       );
       return;
@@ -892,7 +913,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
           'aluno:${aluno.id}:pagamento:registrar:${Aluno.competenciaAtual()}',
       successMessage: 'Pagamento registrado.',
       pendingMessage:
-          'Pagamento registrado localmente. A sincronizacao pode levar alguns segundos.',
+          'Pagamento registrado localmente. A sincroniza\u00e7\u00e3o pode levar alguns segundos.',
       cardMessage: 'Pagamento registrado',
     );
   }
@@ -911,12 +932,12 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       referenciaStatus: referenciaStatus,
     );
     final competenciaLabel = totalPendencias == 1
-        ? 'competencia'
-        : 'competencias';
+        ? 'compet\u00eancia'
+        : 'compet\u00eancias';
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Quitar pendencias acumuladas'),
+        title: const Text('Quitar pend\u00eancias acumuladas'),
         content: Text(
           'Quitar $totalPendencias $competenciaLabel em aberto de ${aluno.nome} (${_formatCurrency(valorTotal)})?',
         ),
@@ -946,7 +967,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       successMessage:
           '$totalPendencias $competenciaLabel quitadas com sucesso.',
       pendingMessage:
-          'Quitacao enviada. A sincronizacao pode levar alguns segundos.',
+          'Quita\u00e7\u00e3o enviada. A sincroniza\u00e7\u00e3o pode levar alguns segundos.',
       cardMessage: '$totalPendencias $competenciaLabel quitadas',
     );
   }
@@ -957,7 +978,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       builder: (ctx) => AlertDialog(
         title: const Text('Inativar aluno'),
         content: Text(
-          'Inativar ${aluno.nome}? O historico financeiro sera preservado, mas ele saira da lista principal.',
+          'Inativar ${aluno.nome}? O hist\u00f3rico financeiro ser\u00e1 preservado, mas ele sair\u00e1 da lista principal.',
         ),
         actions: [
           TextButton(
@@ -982,7 +1003,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       operationId: 'aluno:${aluno.id}:inativar',
       successMessage: 'Aluno inativado.',
       pendingMessage:
-          'Aluno inativado localmente. A sincronizacao pode levar alguns segundos.',
+          'Aluno inativado localmente. A sincroniza\u00e7\u00e3o pode levar alguns segundos.',
       cardMessage: 'Aluno inativado',
     );
   }
@@ -993,7 +1014,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       builder: (ctx) => AlertDialog(
         title: const Text('Ativar aluno'),
         content: Text(
-          'Ativar ${aluno.nome}? Ele voltara a aparecer na lista principal.',
+          'Ativar ${aluno.nome}? Ele voltar\u00e1 a aparecer na lista principal.',
         ),
         actions: [
           TextButton(
@@ -1018,7 +1039,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       operationId: 'aluno:${aluno.id}:ativar',
       successMessage: 'Aluno ativado.',
       pendingMessage:
-          'Aluno ativado localmente. A sincronizacao pode levar alguns segundos.',
+          'Aluno ativado localmente. A sincroniza\u00e7\u00e3o pode levar alguns segundos.',
       cardMessage: 'Aluno ativado',
     );
   }
@@ -1027,7 +1048,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
     final pixPayload = await _buildPixPayloadOrShowError(
       emptyMessage: 'Configure o Pix antes de enviar lembrete.',
       unavailableMessage:
-          'Nao foi possivel carregar o Pix agora. Tente novamente em alguns segundos.',
+          'N\u00e3o foi poss\u00edvel carregar o Pix agora. Tente novamente em alguns segundos.',
     );
     if (pixPayload == null) return;
 
@@ -1041,7 +1062,9 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Cadastre um telefone valido para usar o WhatsApp.'),
+          content: Text(
+            'Cadastre um telefone v\u00e1lido para usar o WhatsApp.',
+          ),
         ),
       );
       return;
@@ -1055,7 +1078,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Nao foi possivel abrir o WhatsApp. Link compartilhado como alternativa.',
+              'N\u00e3o foi poss\u00edvel abrir o WhatsApp. Link compartilhado como alternativa.',
             ),
           ),
         );
@@ -1066,7 +1089,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'WhatsApp indisponivel no momento. Link compartilhado como alternativa.',
+            'WhatsApp indispon\u00edvel no momento. Link compartilhado como alternativa.',
           ),
         ),
       );
@@ -1286,7 +1309,9 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Nao foi possivel gerar a imagem do QR Code.'),
+            content: Text(
+              'N\u00e3o foi poss\u00edvel gerar a imagem do QR Code.',
+            ),
           ),
         );
         return;
@@ -1302,14 +1327,16 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
             ),
           ],
           text: message,
-          subject: 'Cobranca Pix - ${aluno.nome}',
+          subject: 'Cobran\u00e7a Pix - ${aluno.nome}',
         ),
       );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Nao foi possivel compartilhar o QR Code Pix.'),
+          content: Text(
+            'N\u00e3o foi poss\u00edvel compartilhar o QR Code Pix.',
+          ),
         ),
       );
     }

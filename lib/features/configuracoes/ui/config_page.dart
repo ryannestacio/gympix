@@ -1,12 +1,14 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_mode_provider.dart';
 import '../../../core/utils/currency_input_formatter.dart';
+import '../../../core/utils/firestore_error_formatter.dart';
+import '../../../core/utils/firestore_sync_status.dart';
+import '../../../core/providers/firebase_providers.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../auth/ui/sign_out_confirmation_dialog.dart';
 import '../providers/config_providers.dart';
 
 class ConfigPage extends ConsumerStatefulWidget {
@@ -25,6 +27,12 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
     _pixController.dispose();
     _mensalidadeController.dispose();
     super.dispose();
+  }
+
+  Future<void> _confirmAndSignOut() async {
+    final shouldSignOut = await showSignOutConfirmationDialog(context);
+    if (!mounted || !shouldSignOut) return;
+    await ref.read(authControllerProvider.notifier).signOut();
   }
 
   @override
@@ -58,9 +66,16 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
 
     ref.listen(authControllerProvider, (_, next) {
       if (next.hasError) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Erro ao sair: ${next.error}')));
+        final error = next.error;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error == null
+                  ? 'Nao foi possivel sair da conta. Tente novamente.'
+                  : formatFirestoreError(error),
+            ),
+          ),
+        );
       }
     });
 
@@ -74,11 +89,11 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
             AppTheme.spacingXl,
           ),
           children: [
-            const _SettingsHeroCard(title: 'Configuracoes'),
+            const _SettingsHeroCard(title: 'Configura\u00e7\u00f5es'),
             const SizedBox(height: AppTheme.spacingLg),
             const _SectionHeader(
-              title: 'Aparencia',
-              subtitle: 'Personalizacao de tema',
+              title: 'Apar\u00eancia',
+              subtitle: 'Personaliza\u00e7\u00e3o de tema',
               icon: Icons.palette_outlined,
             ),
             const SizedBox(height: AppTheme.spacingSm),
@@ -94,7 +109,7 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
             const SizedBox(height: AppTheme.spacingLg),
             const _SectionHeader(
               title: 'Pagamentos',
-              subtitle: 'Pix e valores padrao',
+              subtitle: 'Pix e valores padr\u00e3o',
               icon: Icons.payment_outlined,
             ),
             const SizedBox(height: AppTheme.spacingSm),
@@ -102,14 +117,14 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
               icon: Icons.qr_code_2_outlined,
               title: 'Chave Pix',
               subtitle: pixValue.isEmpty
-                  ? 'Defina a chave usada nas cobrancas.'
+                  ? 'Defina a chave usada nas cobran\u00e7as.'
                   : 'Chave cadastrada e pronta para uso.',
               onTap: () => _openPixSheet(isLoading: pixAsync.isLoading),
             ),
             const SizedBox(height: AppTheme.spacingSm),
             _PaymentOptionCard(
               icon: Icons.attach_money_rounded,
-              title: 'Mensalidade padrao',
+              title: 'Mensalidade padr\u00e3o',
               subtitle: mensalidadeValue.isEmpty
                   ? 'Defina o valor sugerido no cadastro de alunos.'
                   : 'Valor atual: $mensalidadeValue',
@@ -119,7 +134,7 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
             const SizedBox(height: AppTheme.spacingLg),
             const _SectionHeader(
               title: 'Sistema',
-              subtitle: 'Sessao e informacoes do app',
+              subtitle: 'Sess\u00e3o e informa\u00e7\u00f5es do app',
               icon: Icons.info_outline_rounded,
             ),
             const SizedBox(height: AppTheme.spacingSm),
@@ -132,7 +147,7 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Versao do app',
+                        'Vers\u00e3o do app',
                         style: textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -162,9 +177,7 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
                     child: OutlinedButton.icon(
                       onPressed: authAction.isLoading
                           ? null
-                          : () => ref
-                                .read(authControllerProvider.notifier)
-                                .signOut(),
+                          : _confirmAndSignOut,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: scheme.error,
                         side: BorderSide(
@@ -297,7 +310,7 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Mensalidade padrao',
+                    'Mensalidade padr\u00e3o',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -324,7 +337,9 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
                             )
                           : const Icon(Icons.save_outlined, size: 18),
                       label: Text(
-                        saving ? 'Salvando...' : 'Salvar mensalidade padrao',
+                        saving
+                            ? 'Salvando...'
+                            : 'Salvar mensalidade padr\u00e3o',
                       ),
                     ),
                   ),
@@ -341,29 +356,28 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
     if (pix.isEmpty) {
       if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Informe uma chave Pix valida.')),
+        const SnackBar(content: Text('Informe uma chave Pix v\u00e1lida.')),
       );
       return false;
     }
 
-    final pendingTimer = _schedulePendingSyncFeedback(
-      'Chave Pix salva localmente. A sincronizacao pode levar alguns segundos.',
-    );
     try {
       await ref.read(configRepositoryProvider).setPixCode(pix);
+      final syncState = await waitForFirestoreSync(ref.read(firestoreProvider));
       if (!mounted) return false;
+      final message = syncState == FirestoreSyncState.synced
+          ? 'Chave Pix salva e sincronizada.'
+          : 'Chave Pix salva localmente. Sincronizaremos quando a internet voltar.';
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Chave Pix salva.')));
+      ).showSnackBar(SnackBar(content: Text(message)));
       return true;
     } catch (e) {
       if (!mounted) return false;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao salvar Pix: $e')));
+      ).showSnackBar(SnackBar(content: Text(formatFirestoreError(e))));
       return false;
-    } finally {
-      pendingTimer.cancel();
     }
   }
 
@@ -372,39 +386,29 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
     if (value == null || value <= 0) {
       if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Valor de mensalidade invalido.')),
+        const SnackBar(content: Text('Valor de mensalidade inv\u00e1lido.')),
       );
       return false;
     }
 
-    final pendingTimer = _schedulePendingSyncFeedback(
-      'Mensalidade salva localmente. A sincronizacao pode levar alguns segundos.',
-    );
     try {
       await ref.read(configRepositoryProvider).setDefaultMensalidade(value);
+      final syncState = await waitForFirestoreSync(ref.read(firestoreProvider));
       if (!mounted) return false;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mensalidade padrao salva.')),
-      );
+      final message = syncState == FirestoreSyncState.synced
+          ? 'Mensalidade padr\u00e3o salva e sincronizada.'
+          : 'Mensalidade salva localmente. Sincronizaremos quando a internet voltar.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       return true;
     } catch (e) {
       if (!mounted) return false;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao salvar mensalidade: $e')));
+      ).showSnackBar(SnackBar(content: Text(formatFirestoreError(e))));
       return false;
-    } finally {
-      pendingTimer.cancel();
     }
-  }
-
-  Timer _schedulePendingSyncFeedback(String message) {
-    return Timer(const Duration(seconds: 6), () {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
-    });
   }
 }
 

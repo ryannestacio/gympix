@@ -1,0 +1,19 @@
+{
+  "name": "gympix-firestore-emulator-tests",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test:firestore-rules": "node --test emulator-tests/firestore.rules.test.mjs",
+    "emulator:test:firestore": "firebase emulators:exec --only firestore --project demo-gympix \"npm run test:firestore-rules\"",
+    "emulator:start:firestore": "firebase emulators:start --only firestore --project demo-gympix",
+    "deploy:firestore:validate": "powershell -ExecutionPolicy Bypass -File scripts/firestore_deploy_controlled.ps1 -SkipDeploy",
+    "deploy:firestore": "powershell -ExecutionPolicy Bypass -File scripts/firestore_deploy_controlled.ps1"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.0"
+  }
+}

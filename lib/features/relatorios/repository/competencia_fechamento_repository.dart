@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/constants/firestore_fields.dart';
+import '../../../core/constants/firestore_paths.dart';
 import '../../../core/utils/firestore_retry_policy.dart';
 import '../models/competencia_report.dart';
 
@@ -14,11 +16,8 @@ class CompetenciaFechamentoRepository {
   final String _tenantId;
   final RetryPolicy _retryPolicy;
 
-  DocumentReference<Map<String, dynamic>> get _tenantDoc =>
-      _db.collection('tenants').doc(_tenantId);
-
   CollectionReference<Map<String, dynamic>> get _col =>
-      _tenantDoc.collection('fechamentos_mensais');
+      FirestoreRefs.tenantFechamentosMensais(_db, _tenantId);
 
   Stream<CompetenciaReportData?> watchFechamento(String competencia) {
     return _col.doc(competencia).snapshots().map((doc) {
@@ -36,8 +35,21 @@ class CompetenciaFechamentoRepository {
   }
 
   Future<void> salvarFechamento(CompetenciaReportData report) {
-    return _retryPolicy.execute(
-      () => _col.doc(report.competencia).set(report.toFirestore()),
-    );
+    return _retryPolicy.execute(() async {
+      final docRef = _col.doc(report.competencia);
+      await _db.runTransaction((tx) async {
+        final snap = await tx.get(docRef);
+        final data = <String, Object?>{
+          ...report.toFirestore(),
+          FirestoreFields.tenantId: _tenantId,
+          FirestoreFields.docType: FirestoreDocTypes.fechamentoMensal,
+          FirestoreFields.updatedAt: FieldValue.serverTimestamp(),
+        };
+        if (!snap.exists) {
+          data[FirestoreFields.createdAt] = FieldValue.serverTimestamp();
+        }
+        tx.set(docRef, data, SetOptions(merge: true));
+      });
+    });
   }
 }

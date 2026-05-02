@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -56,7 +56,9 @@ class AlunoFormSheet extends StatefulWidget {
       showDragHandle: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusLg),
+        ),
       ),
       builder: (context) {
         return AnimatedPadding(
@@ -95,7 +97,9 @@ class AlunoFormSheet extends StatefulWidget {
 class _AlunoFormSheetState extends State<AlunoFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final _nome = TextEditingController(text: widget.initial?.nome ?? '');
-  late final _telefone = TextEditingController(text: widget.initial?.telefone ?? '');
+  late final _telefone = TextEditingController(
+    text: widget.initial?.telefone ?? '',
+  );
   late final _observacao = TextEditingController(
     text: widget.initial?.observacao ?? '',
   );
@@ -116,7 +120,8 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
   }
 
   String _mensalidadeInitialText() {
-    final v = widget.initial?.mensalidade ??
+    final v =
+        widget.initial?.mensalidade ??
         widget.seedMensalidade ??
         widget.defaultMensalidade;
     if (v == null) return '';
@@ -183,7 +188,7 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
                 final digits = _onlyDigits(v ?? '');
                 if (digits.isEmpty) return 'Informe o telefone';
                 if (digits.length < 10 || digits.length > 11) {
-                  return 'Telefone invalido';
+                  return 'Telefone inv\u00e1lido';
                 }
                 return null;
               },
@@ -195,8 +200,9 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
               minLines: 2,
               maxLines: 3,
               decoration: const InputDecoration(
-                labelText: 'Observacao',
-                hintText: 'Plano, restricao, desconto ou forma de pagamento',
+                labelText: 'Observa\u00e7\u00e3o',
+                hintText:
+                    'Plano, restri\u00e7\u00e3o, desconto ou forma de pagamento',
               ),
             ),
             const SizedBox(height: 12),
@@ -208,7 +214,9 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
                     keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.next,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: const InputDecoration(labelText: 'Dia de vencimento'),
+                    decoration: const InputDecoration(
+                      labelText: 'Dia de vencimento',
+                    ),
                     validator: (v) {
                       final n = int.tryParse((v ?? '').trim());
                       if (n == null || n < 1 || n > 28) {
@@ -269,7 +277,9 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
                     ? Icons.person_add_alt_1_rounded
                     : Icons.check_rounded,
               ),
-              label: Text(widget.initial == null ? 'Adicionar aluno' : 'Salvar'),
+              label: Text(
+                widget.initial == null ? 'Adicionar aluno' : 'Salvar',
+              ),
             ),
           ],
         ),

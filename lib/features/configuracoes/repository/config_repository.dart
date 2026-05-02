@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/constants/firestore_fields.dart';
+import '../../../core/constants/firestore_paths.dart';
 import '../../../core/domain/inadimplencia_config.dart';
 import '../../../core/utils/firestore_retry_policy.dart';
 import '../../cobranca/models/cobranca_regua.dart';
@@ -12,14 +14,11 @@ class ConfigRepository {
   final String _tenantId;
   final RetryPolicy _retryPolicy;
 
-  DocumentReference<Map<String, dynamic>> get _tenantDoc =>
-      _db.collection('tenants').doc(_tenantId);
-
   DocumentReference<Map<String, dynamic>> get _pixDoc =>
-      _tenantDoc.collection('config').doc('pix');
+      FirestoreRefs.tenantConfigDoc(_db, _tenantId, FirestoreConfigDocs.pix);
 
   DocumentReference<Map<String, dynamic>> get _appDoc =>
-      _tenantDoc.collection('config').doc('app');
+      FirestoreRefs.tenantConfigDoc(_db, _tenantId, FirestoreConfigDocs.app);
 
   Stream<String?> watchPixCode() {
     return _pixDoc.snapshots().map((doc) {
@@ -39,8 +38,10 @@ class ConfigRepository {
   }
 
   Future<void> setPixCode(String pixCode) {
-    return _retryPolicy.execute(
-      () => _pixDoc.set({'pixCode': pixCode.trim()}, SetOptions(merge: true)),
+    return _upsertConfigDoc(
+      docRef: _pixDoc,
+      docType: FirestoreDocTypes.pixConfig,
+      payload: {'pixCode': pixCode.trim()},
     );
   }
 
@@ -54,8 +55,10 @@ class ConfigRepository {
   }
 
   Future<void> setDefaultMensalidade(double value) {
-    return _retryPolicy.execute(
-      () => _appDoc.set({'defaultMensalidade': value}, SetOptions(merge: true)),
+    return _upsertConfigDoc(
+      docRef: _appDoc,
+      docType: FirestoreDocTypes.appConfig,
+      payload: {'defaultMensalidade': value},
     );
   }
 
@@ -87,10 +90,10 @@ class ConfigRepository {
   }
 
   Future<void> setCobrancaReguaConfig(CobrancaReguaConfig config) {
-    return _retryPolicy.execute(
-      () => _appDoc.set({
-        'cobrancaRegua': config.toMap(),
-      }, SetOptions(merge: true)),
+    return _upsertConfigDoc(
+      docRef: _appDoc,
+      docType: FirestoreDocTypes.appConfig,
+      payload: {'cobrancaRegua': config.toMap()},
     );
   }
 
@@ -124,10 +127,34 @@ class ConfigRepository {
   }
 
   Future<void> setInadimplenciaConfig(InadimplenciaConfig config) {
-    return _retryPolicy.execute(
-      () => _appDoc.set({
-        'inadimplencia': config.toMap(),
-      }, SetOptions(merge: true)),
+    return _upsertConfigDoc(
+      docRef: _appDoc,
+      docType: FirestoreDocTypes.appConfig,
+      payload: {'inadimplencia': config.toMap()},
     );
+  }
+
+  Future<void> _upsertConfigDoc({
+    required DocumentReference<Map<String, dynamic>> docRef,
+    required String docType,
+    required Map<String, Object?> payload,
+  }) {
+    return _retryPolicy.execute(() async {
+      await _db.runTransaction((tx) async {
+        final snap = await tx.get(docRef);
+        final data = <String, Object?>{
+          ...payload,
+          FirestoreFields.tenantId: _tenantId,
+          FirestoreFields.docType: docType,
+          FirestoreFields.status: FirestoreStatus.ativo,
+          FirestoreFields.ativo: true,
+          FirestoreFields.updatedAt: FieldValue.serverTimestamp(),
+        };
+        if (!snap.exists) {
+          data[FirestoreFields.createdAt] = FieldValue.serverTimestamp();
+        }
+        tx.set(docRef, data, SetOptions(merge: true));
+      });
+    });
   }
 }

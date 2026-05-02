@@ -43,14 +43,6 @@ class CobrancaReguaAutomationService {
     var enviados = 0;
 
     for (final acao in acoes) {
-      final exists = await _reguaRepository.hasAutomacaoRegistro(
-        alunoId: acao.aluno.id,
-        competencia: acao.competencia,
-        diasRelativos: acao.diasRelativos,
-        status: acao.pagamento.status,
-      );
-      if (exists) continue;
-
       final pixPayload = _buildPixPayload(
         pixCode: pixCode,
         aluno: acao.aluno,
@@ -94,11 +86,14 @@ class CobrancaReguaAutomationService {
         diasRelativos: acao.diasRelativos,
         status: acao.pagamento.status,
       );
-      await _reguaRepository.registrarEnvio(envio, customId: docId);
+      final persisted = await _reguaRepository
+          .registrarAutomacaoEnvioComIntegridade(
+            envio: envio,
+            docId: docId,
+            enqueuePush: config.notificacaoPushAtiva,
+          );
+      if (!persisted) continue;
 
-      if (config.notificacaoPushAtiva) {
-        await _reguaRepository.enqueuePush(envio);
-      }
       if (config.notificacaoLocalAtiva) {
         await _notificationService.notify(
           idempotencyKey: '${acao.aluno.id}::$docId',
@@ -188,7 +183,10 @@ class CobrancaReguaAutomationService {
   }
 
   String _buildTxid(String alunoId) {
-    final normalized = alunoId.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    final normalized = alunoId.toUpperCase().replaceAll(
+      RegExp(r'[^A-Z0-9]'),
+      '',
+    );
     if (normalized.isEmpty) return 'GYMPIX';
     final suffix = normalized.length <= 18
         ? normalized

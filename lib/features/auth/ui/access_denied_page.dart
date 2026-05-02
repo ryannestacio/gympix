@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../controllers/auth_controller.dart';
 import '../providers/auth_providers.dart';
+import 'sign_out_confirmation_dialog.dart';
 
 class AccessDeniedPage extends ConsumerWidget {
   const AccessDeniedPage({super.key});
@@ -48,9 +49,14 @@ class AccessDeniedPage extends ConsumerWidget {
                   FilledButton.tonalIcon(
                     onPressed: action.isLoading
                         ? null
-                        : () => ref
-                              .read(authControllerProvider.notifier)
-                              .signOut(),
+                        : () async {
+                            final shouldSignOut =
+                                await showSignOutConfirmationDialog(context);
+                            if (!context.mounted || !shouldSignOut) return;
+                            await ref
+                                .read(authControllerProvider.notifier)
+                                .signOut();
+                          },
                     icon: action.isLoading
                         ? const SizedBox(
                             width: 16,

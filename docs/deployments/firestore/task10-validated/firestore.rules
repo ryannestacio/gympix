@@ -1,0 +1,138 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasMembership() {
+      return signedIn() &&
+          exists(/databases/$(database)/documents/user_tenants/$(request.auth.uid));
+    }
+
+    function membership() {
+      return get(
+        /databases/$(database)/documents/user_tenants/$(request.auth.uid),
+      ).data;
+    }
+
+    function membershipIsActive() {
+      return (membership().ativo is bool && membership().ativo == true) ||
+          (membership().status is string &&
+              membership().status in ['ativo', 'active', 'enabled']);
+    }
+
+    function tenantExists(tenantId) {
+      return exists(/databases/$(database)/documents/tenants/$(tenantId));
+    }
+
+    function tenant() {
+      return get(
+        /databases/$(database)/documents/tenants/$(membership().tenantId),
+      ).data;
+    }
+
+    function tenantIsActive() {
+      return (tenant().ativo is bool && tenant().ativo == true) ||
+          (tenant().status is string &&
+              tenant().status in ['ativo', 'active', 'enabled']) ||
+          (tenant().ativo == null && tenant().status == null);
+    }
+
+    function hasTenantAccess(tenantId) {
+      return hasMembership() &&
+          (membership().tenantId is string) &&
+          membership().tenantId == tenantId &&
+          membershipIsActive() &&
+          tenantExists(tenantId) &&
+          tenantIsActive();
+    }
+
+    function incomingTenantFieldMatches(tenantId) {
+      return request.resource.data.tenantId == null ||
+          request.resource.data.tenantId == tenantId;
+    }
+
+    function isBootstrapTenant(tenantId) {
+      return signedIn() && request.auth.uid == tenantId;
+    }
+
+    function isActiveFlagOrStatus(data) {
+      return (data.ativo is bool && data.ativo == true) ||
+          (data.status is string && data.status in ['ativo', 'active', 'enabled']);
+    }
+
+    // Vínculo do usuário autenticado ao tenant (somente leitura própria).
+    match /user_tenants/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() &&
+          request.auth.uid == uid &&
+          !exists(/databases/$(database)/documents/user_tenants/$(uid)) &&
+          request.resource.data.tenantId == uid &&
+          request.resource.data.role == 'owner' &&
+          isActiveFlagOrStatus(request.resource.data);
+      allow list, update, delete: if false;
+    }
+
+    // Documento raiz do tenant (lido no login para validar status/nome).
+    match /tenants/{tenantId} {
+      allow get: if hasTenantAccess(tenantId) || isBootstrapTenant(tenantId);
+      allow create: if isBootstrapTenant(tenantId) &&
+          !tenantExists(tenantId) &&
+          request.resource.data.tenantId == tenantId &&
+          isActiveFlagOrStatus(request.resource.data);
+      allow list, update, delete: if false;
+
+      // Cadastro de alunos do tenant.
+      match /alunos/{alunoId} {
+        allow get, list: if hasTenantAccess(tenantId);
+        allow create, update: if hasTenantAccess(tenantId) &&
+            incomingTenantFieldMatches(tenantId);
+        allow delete: if false;
+
+        // Histórico de envios de cobrança por aluno.
+        match /cobranca_envios/{envioId} {
+          allow get, list: if hasTenantAccess(tenantId);
+          allow create, update: if hasTenantAccess(tenantId);
+          allow delete: if false;
+        }
+      }
+
+      // Configuração do app/pix do tenant.
+      match /config/{docId} {
+        allow get: if hasTenantAccess(tenantId) ||
+            (isBootstrapTenant(tenantId) && docId in ['app', 'pix']);
+        allow list: if hasTenantAccess(tenantId);
+        allow create: if (hasTenantAccess(tenantId) ||
+              (isBootstrapTenant(tenantId) &&
+                  docId in ['app', 'pix'])) &&
+            incomingTenantFieldMatches(tenantId);
+        allow update: if hasTenantAccess(tenantId) &&
+            incomingTenantFieldMatches(tenantId);
+        allow delete: if false;
+      }
+
+      // Fechamentos mensais do tenant.
+      match /fechamentos_mensais/{fechamentoId} {
+        allow get, list: if hasTenantAccess(tenantId);
+        allow create, update: if hasTenantAccess(tenantId) &&
+            incomingTenantFieldMatches(tenantId);
+        allow delete: if false;
+      }
+
+      // Fila de push (consumida no backend via Admin SDK).
+      match /cobranca_push_queue/{jobId} {
+        allow create: if hasTenantAccess(tenantId) &&
+            incomingTenantFieldMatches(tenantId);
+        allow get, list: if hasTenantAccess(tenantId);
+        allow update, delete: if false;
+      }
+    }
+
+    // Bloqueio padrão global.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

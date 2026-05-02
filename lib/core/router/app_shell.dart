@@ -11,9 +11,9 @@ class AppShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
   static const List<_NavItem> _items = [
-    _NavItem(icon: Icons.home_outlined, label: 'Home', path: '/'),
+    _NavItem(icon: Icons.home_outlined, label: 'Início', path: '/'),
     _NavItem(icon: Icons.people_outline, label: 'Alunos', path: '/alunos'),
-    _NavItem(icon: Icons.settings_outlined, label: 'Config', path: '/config'),
+    _NavItem(icon: Icons.settings_outlined, label: 'Ajustes', path: '/config'),
   ];
 
   @override

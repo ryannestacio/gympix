@@ -136,7 +136,7 @@ class HomePage extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Visao rapida',
+                            'Visão rápida',
                             style: textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
@@ -177,7 +177,7 @@ class HomePage extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'Resumo do mes (${_headerMonthFormatter.format(competenciaSelecionada)})',
+                            'Resumo do mês (${_headerMonthFormatter.format(competenciaSelecionada)})',
                             style: textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
@@ -257,7 +257,7 @@ class HomePage extends ConsumerWidget {
                         const SizedBox(width: AppTheme.spacingSm),
                         Expanded(
                           child: _StatCard(
-                            label: 'Inadimplencia',
+                            label: 'Inadimplência',
                             value:
                                 '${stats.inadimplenciaPercent.toStringAsFixed(0)}%',
                             icon: Icons.percent_rounded,
@@ -270,7 +270,7 @@ class HomePage extends ConsumerWidget {
                     const SizedBox(height: AppTheme.spacingSm),
                     const SizedBox(height: AppTheme.spacingLg),
                     Text(
-                      'Vencimentos proximos',
+                      'Vencimentos próximos',
                       style: textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -279,7 +279,7 @@ class HomePage extends ConsumerWidget {
                     _VencimentosSection(itens: proximos),
                     const SizedBox(height: AppTheme.spacingXl),
                     Text(
-                      'Acoes',
+                      'Ações',
                       style: textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -295,21 +295,21 @@ class HomePage extends ConsumerWidget {
                     _ActionTile(
                       icon: Icons.file_download_outlined,
                       title: 'Exportar CSV mensal',
-                      subtitle: 'Baixar e compartilhar relatorio financeiro',
+                      subtitle: 'Baixar e compartilhar relatório financeiro',
                       onTap: () => _exportCsv(context, report),
                     ),
                     const SizedBox(height: AppTheme.spacingXs + 2),
                     _ActionTile(
                       icon: Icons.picture_as_pdf_outlined,
                       title: 'Exportar PDF mensal',
-                      subtitle: 'Resumo da competencia selecionada',
+                      subtitle: 'Resumo da competência selecionada',
                       onTap: () => _exportPdf(context, report),
                     ),
                     const SizedBox(height: AppTheme.spacingXs + 2),
                     _ActionTile(
                       icon: Icons.settings_outlined,
-                      title: 'Configuracoes',
-                      subtitle: 'Pix e mensalidade padrao',
+                      title: 'Configurações',
+                      subtitle: 'Pix e mensalidade padrão',
                       onTap: () => context.go('/config'),
                     ),
                     const SizedBox(height: AppTheme.spacingXl),
@@ -355,7 +355,7 @@ class HomePage extends ConsumerWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao exportar PDF: $e')));
+      ).showSnackBar(SnackBar(content: Text(formatFirestoreError(e))));
     }
   }
 
@@ -396,7 +396,7 @@ class _CompetenciaSelector extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            tooltip: 'Mes anterior',
+            tooltip: 'Mês anterior',
             visualDensity: VisualDensity.compact,
             onPressed: () =>
                 onChanged(DateTime(competencia.year, competencia.month - 1)),
@@ -416,7 +416,7 @@ class _CompetenciaSelector extends StatelessWidget {
                 GestureDetector(
                   onTap: isMesAtual ? null : () => onChanged(mesAtual),
                   child: Text(
-                    isMesAtual ? 'Mes atual' : 'Voltar ao atual',
+                    isMesAtual ? 'Mês atual' : 'Voltar ao mês atual',
                     style: textTheme.labelSmall?.copyWith(
                       color: isMesAtual
                           ? scheme.onSurfaceVariant
@@ -429,7 +429,7 @@ class _CompetenciaSelector extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'Proximo mes',
+            tooltip: 'Próximo mês',
             visualDensity: VisualDensity.compact,
             onPressed: () =>
                 onChanged(DateTime(competencia.year, competencia.month + 1)),
@@ -467,7 +467,7 @@ List<_VencimentoItem> _buildProximosVencimentos(List<Aluno> alunos) {
 
     final label = switch (daysUntil) {
       0 => 'Vence hoje',
-      1 => 'Vence amanha',
+      1 => 'Vence amanhã',
       _ => 'Vence em $daysUntil dias',
     };
 
@@ -509,7 +509,7 @@ class _VencimentosSection extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         ),
         child: Text(
-          'Nenhum aluno com vencimento para hoje ou para os proximos 7 dias.',
+          'Nenhum aluno com vencimento para hoje ou para os próximos 7 dias.',
           style: textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
         ),
       );

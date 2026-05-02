@@ -63,14 +63,14 @@ class _HistoricoAlunoSheetState extends State<HistoricoAlunoSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Historico mensal - ${widget.aluno.nome}',
+              'Hist\u00f3rico mensal - ${widget.aluno.nome}',
               style: textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: AppTheme.spacingXs),
             Text(
-              'Filtre por competencia para revisar pagamentos anteriores.',
+              'Filtre por compet\u00eancia para revisar pagamentos anteriores.',
               style: textTheme.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),
@@ -79,7 +79,7 @@ class _HistoricoAlunoSheetState extends State<HistoricoAlunoSheet> {
             DropdownButtonFormField<String>(
               initialValue: _competenciaSelecionada,
               decoration: const InputDecoration(
-                labelText: 'Competencia',
+                labelText: 'Compet\u00eancia',
                 prefixIcon: Icon(Icons.calendar_month_outlined),
               ),
               items: _competencias
@@ -132,7 +132,7 @@ class _HistoricoAlunoSheetState extends State<HistoricoAlunoSheet> {
                   vertical: AppTheme.spacingLg,
                 ),
                 child: Text(
-                  'Sem registros para a competencia selecionada.',
+                  'Sem registros para a compet\u00eancia selecionada.',
                   textAlign: TextAlign.center,
                   style: textTheme.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
@@ -230,7 +230,7 @@ class _HistoricoAlunoSheetState extends State<HistoricoAlunoSheet> {
                           if ((p.observacao ?? '').isNotEmpty) ...[
                             const SizedBox(height: AppTheme.spacingSm),
                             Text(
-                              'Observacoes',
+                              'Observa\u00e7\u00f5es',
                               style: textTheme.labelMedium?.copyWith(
                                 color: scheme.onSurfaceVariant,
                               ),
@@ -296,7 +296,7 @@ Color statusColorFromPagamento(BuildContext context, PagamentoStatus status) {
 }
 
 String competenciaLabel(String competencia) {
-  if (competencia == 'todas') return 'Todas as competencias';
+  if (competencia == 'todas') return 'Todas as compet\u00eancias';
   final parts = competencia.split('-');
   if (parts.length != 2) return competencia;
   final ano = int.tryParse(parts[0]);
@@ -307,7 +307,7 @@ String competenciaLabel(String competencia) {
     '',
     'Janeiro',
     'Fevereiro',
-    'Marco',
+    'Mar\u00e7o',
     'Abril',
     'Maio',
     'Junho',
@@ -447,12 +447,14 @@ class _RegistroPagamentoSheetState extends State<RegistroPagamentoSheet> {
               keyboardType: TextInputType.number,
               inputFormatters: const [BrlCurrencyInputFormatter()],
               decoration: const InputDecoration(
-                labelText: 'Valor do mes',
+                labelText: 'Valor do m\u00eas',
                 hintText: 'Ex: R\$ 200,00',
               ),
               validator: (v) {
                 final valor = parseBrlCurrency((v ?? '').trim());
-                if (valor == null || valor <= 0) return 'Valor invalido';
+                if (valor == null || valor <= 0) {
+                  return 'Valor inv\u00e1lido';
+                }
                 return null;
               },
             ),
@@ -469,7 +471,7 @@ class _RegistroPagamentoSheetState extends State<RegistroPagamentoSheet> {
               minLines: 2,
               maxLines: 4,
               decoration: const InputDecoration(
-                labelText: 'Observacoes (opcional)',
+                labelText: 'Observa\u00e7\u00f5es (opcional)',
               ),
             ),
             const SizedBox(height: AppTheme.spacingMd),

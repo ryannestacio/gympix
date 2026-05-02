@@ -1,0 +1,22 @@
+﻿{
+    "releaseVersion":  "task10-validated",
+    "generatedAtUtc":  "2026-05-02T02:50:18.0021638Z",
+    "result":  "passed",
+    "projectId":  "demo-gympix",
+    "deployScope":  "all",
+    "statuses":  {
+                     "flutterTests":  "passed",
+                     "emulatorTests":  "passed",
+                     "deploy":  "skipped"
+                 },
+    "artifacts":  {
+                      "rulesFile":  "firestore.rules",
+                      "indexesFile":  "firestore.indexes.json",
+                      "rulesSha256":  "898C862DC3A428983CEAD138E08F0A571828776F08ED5B5F58C3BC8874615372",
+                      "indexesSha256":  "6742255415C36DAF631B52F233039190AF819205CC41FA58D07DD7D9E180C2B9"
+                  },
+    "git":  {
+                "commit":  "6182ede6ec870efdcbf94d161ea3ad7dc9235a53",
+                "dirty":  true
+            }
+}

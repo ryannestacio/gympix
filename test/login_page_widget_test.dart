@@ -19,8 +19,17 @@ void main() {
 
         expect(find.text('Email'), findsOneWidget);
         expect(find.text('Senha'), findsOneWidget);
-        expect(find.text('Entrar'), findsOneWidget);
+        expect(find.widgetWithText(FilledButton, 'Entrar'), findsOneWidget);
         expect(find.byType(FilledButton), findsOneWidget);
+        expect(find.text('Entre em contato para obter o app.'), findsOneWidget);
+        expect(
+          find.widgetWithText(OutlinedButton, 'Entrar em contato no WhatsApp'),
+          findsOneWidget,
+        );
+        expect(
+          find.text('Todos os direitos reservados a Ryan Estácio'),
+          findsOneWidget,
+        );
       });
 
       testWidgets('botao Entrar habilitado inicialmente', (
@@ -33,13 +42,11 @@ void main() {
         expect(button.onPressed, isNotNull);
       });
 
-      testWidgets('layout minimal sem imagem de logo', (
-        WidgetTester tester,
-      ) async {
+      testWidgets('renderiza logo do app', (WidgetTester tester) async {
         await tester.pumpWidget(_buildApp());
         await tester.pump();
 
-        expect(find.byType(Image), findsNothing);
+        expect(find.byType(Image), findsOneWidget);
       });
     });
 
@@ -50,11 +57,30 @@ void main() {
         await tester.pumpWidget(_buildApp());
         await tester.pump();
 
-        await tester.tap(find.text('Entrar'));
+        await tester.ensureVisible(find.widgetWithText(FilledButton, 'Entrar'));
+        await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
         await tester.pumpAndSettle();
 
         expect(find.text('Informe seu email.'), findsOneWidget);
         expect(find.text('Informe sua senha.'), findsOneWidget);
+      });
+
+      testWidgets('mostra erro para email com formato invalido', (
+        WidgetTester tester,
+      ) async {
+        await tester.pumpWidget(_buildApp());
+        await tester.pump();
+
+        await tester.enterText(
+          find.byType(TextFormField).first,
+          'joao @mail.com',
+        );
+        await tester.enterText(find.byType(TextFormField).last, '123456');
+        await tester.ensureVisible(find.widgetWithText(FilledButton, 'Entrar'));
+        await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Email invalido.'), findsOneWidget);
       });
 
       testWidgets('toggle visibilidade de senha funciona', (
@@ -68,6 +94,7 @@ void main() {
         expect(find.byIcon(Icons.visibility_off_outlined), findsNothing);
 
         // Tap para mostrar
+        await tester.ensureVisible(find.byIcon(Icons.visibility_outlined));
         await tester.tap(find.byIcon(Icons.visibility_outlined));
         await tester.pumpAndSettle();
 

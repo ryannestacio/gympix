@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../../core/constants/firestore_fields.dart';
+import '../../../core/constants/firestore_paths.dart';
 import '../models/auth_session.dart';
 
 class AuthLoginException implements Exception {
@@ -29,7 +31,7 @@ class AuthRepository {
     required String password,
   }) async {
     final normalizedEmail = email.trim().toLowerCase();
-    final normalizedPassword = password.trim();
+    final normalizedPassword = password;
     if (normalizedEmail.isEmpty || normalizedPassword.isEmpty) {
       throw const AuthLoginException('Informe email e senha para entrar.');
     }
@@ -61,10 +63,16 @@ class AuthRepository {
   }
 
   Future<SessionLookupResult> resolveSession(User user) async {
-    final membershipDoc = await _db
-        .collection('user_tenants')
-        .doc(user.uid)
-        .get();
+    try {
+      await _seedInitialTenantIfMissing(user);
+    } on FirebaseException catch (e) {
+      // O seed usa transacao (exige online). Em offline, seguimos com cache.
+      if (!_isNetworkOrSyncTransientCode(e.code)) rethrow;
+    }
+
+    final membershipDoc = await _getWithOfflineFallback(
+      FirestoreRefs.userTenantDoc(_db, user.uid),
+    );
     if (!membershipDoc.exists) {
       return const SessionLookupResult.denied(
         'Sua conta nao possui acesso autorizado.',
@@ -72,7 +80,7 @@ class AuthRepository {
     }
 
     final membership = membershipDoc.data() ?? <String, dynamic>{};
-    final memberAtivo = membership['ativo'] as bool? ?? false;
+    final memberAtivo = _isMembershipAtivo(membership);
     if (!memberAtivo) {
       return const SessionLookupResult.denied(
         'Seu acesso foi desativado. Contate o administrador.',
@@ -86,7 +94,9 @@ class AuthRepository {
       );
     }
 
-    final tenantDoc = await _db.collection('tenants').doc(tenantId).get();
+    final tenantDoc = await _getWithOfflineFallback(
+      FirestoreRefs.tenantDoc(_db, tenantId),
+    );
     if (!tenantDoc.exists) {
       return const SessionLookupResult.denied(
         'Tenant nao encontrado ou removido.',
@@ -94,7 +104,7 @@ class AuthRepository {
     }
 
     final tenantData = tenantDoc.data() ?? <String, dynamic>{};
-    if (!_isTenantAtivo(tenantData['status'])) {
+    if (!_isTenantAtivo(tenantData)) {
       return const SessionLookupResult.denied(
         'Tenant inativo. Acesso bloqueado.',
       );
@@ -122,6 +132,128 @@ class AuthRepository {
     );
   }
 
+  Future<DocumentSnapshot<Map<String, dynamic>>> _getWithOfflineFallback(
+    DocumentReference<Map<String, dynamic>> docRef,
+  ) async {
+    try {
+      return await docRef.get();
+    } on FirebaseException catch (e) {
+      if (!_isNetworkOrSyncTransientCode(e.code)) rethrow;
+      try {
+        return await docRef.get(const GetOptions(source: Source.cache));
+      } on FirebaseException {
+        rethrow;
+      }
+    }
+  }
+
+  bool _isNetworkOrSyncTransientCode(String code) {
+    return code == 'unavailable' ||
+        code == 'deadline-exceeded' ||
+        code == 'aborted' ||
+        code == 'cancelled' ||
+        code == 'failed-precondition';
+  }
+
+  Future<void> _seedInitialTenantIfMissing(User user) async {
+    final membershipRef = FirestoreRefs.userTenantDoc(_db, user.uid);
+    final existingMembership = await membershipRef.get();
+    if (existingMembership.exists) return;
+
+    final tenantId = user.uid;
+    final tenantRef = FirestoreRefs.tenantDoc(_db, tenantId);
+    final appConfigRef = FirestoreRefs.tenantConfigDoc(
+      _db,
+      tenantId,
+      FirestoreConfigDocs.app,
+    );
+    final pixConfigRef = FirestoreRefs.tenantConfigDoc(
+      _db,
+      tenantId,
+      FirestoreConfigDocs.pix,
+    );
+
+    await _db.runTransaction((tx) async {
+      final membershipSnap = await tx.get(membershipRef);
+      if (membershipSnap.exists) return;
+
+      final tenantSnap = await tx.get(tenantRef);
+      final appConfigSnap = await tx.get(appConfigRef);
+      final pixConfigSnap = await tx.get(pixConfigRef);
+
+      final now = FieldValue.serverTimestamp();
+      final displayName = _resolveDisplayName(user);
+
+      if (!tenantSnap.exists) {
+        tx.set(tenantRef, {
+          FirestoreFields.tenantId: tenantId,
+          'nome': _resolveTenantName(displayName, user.email),
+          FirestoreFields.status: FirestoreStatus.ativo,
+          FirestoreFields.ativo: true,
+          FirestoreFields.createdAt: now,
+          FirestoreFields.updatedAt: now,
+        });
+      }
+
+      tx.set(membershipRef, {
+        FirestoreFields.tenantId: tenantId,
+        FirestoreFields.role: TenantRole.owner.name,
+        FirestoreFields.status: FirestoreStatus.ativo,
+        FirestoreFields.ativo: true,
+        FirestoreFields.createdAt: now,
+        FirestoreFields.updatedAt: now,
+        'email': (user.email ?? '').trim().toLowerCase(),
+        'nome': displayName,
+      });
+
+      if (!appConfigSnap.exists) {
+        tx.set(appConfigRef, {
+          FirestoreFields.tenantId: tenantId,
+          FirestoreFields.docType: FirestoreDocTypes.appConfig,
+          FirestoreFields.status: FirestoreStatus.ativo,
+          FirestoreFields.ativo: true,
+          FirestoreFields.createdAt: now,
+          FirestoreFields.updatedAt: now,
+        });
+      }
+
+      if (!pixConfigSnap.exists) {
+        tx.set(pixConfigRef, {
+          FirestoreFields.tenantId: tenantId,
+          FirestoreFields.docType: FirestoreDocTypes.pixConfig,
+          FirestoreFields.status: FirestoreStatus.ativo,
+          FirestoreFields.ativo: true,
+          FirestoreFields.createdAt: now,
+          FirestoreFields.updatedAt: now,
+        });
+      }
+    });
+  }
+
+  String _resolveDisplayName(User user) {
+    final fromProfile = (user.displayName ?? '').trim();
+    if (fromProfile.isNotEmpty) return fromProfile;
+
+    final email = (user.email ?? '').trim();
+    if (email.contains('@')) {
+      return email.split('@').first;
+    }
+
+    return 'Usuario';
+  }
+
+  String _resolveTenantName(String displayName, String? email) {
+    final normalized = displayName.trim();
+    if (normalized.isNotEmpty) return 'Academia $normalized';
+
+    final fallbackEmail = (email ?? '').trim();
+    if (fallbackEmail.contains('@')) {
+      return 'Academia ${fallbackEmail.split('@').first}';
+    }
+
+    return 'Minha academia';
+  }
+
   String? _resolveTenantId(Map<String, dynamic> membership) {
     final tenantId = (membership['tenantId'] as String?)?.trim();
     if (tenantId != null && tenantId.isNotEmpty) return tenantId;
@@ -136,12 +268,33 @@ class AuthRepository {
     return null;
   }
 
-  bool _isTenantAtivo(dynamic status) {
-    if (status is bool) return status;
+  bool _isMembershipAtivo(Map<String, dynamic> membership) {
+    final ativo = membership[FirestoreFields.ativo];
+    if (ativo is bool) return ativo;
+
+    final status = membership[FirestoreFields.status];
     if (status is String) {
       final value = status.trim().toLowerCase();
-      return value == 'ativo' || value == 'active' || value == 'enabled';
+      return value == FirestoreStatus.ativo ||
+          value == 'active' ||
+          value == 'enabled';
     }
+
+    return false;
+  }
+
+  bool _isTenantAtivo(Map<String, dynamic> tenantData) {
+    final ativo = tenantData[FirestoreFields.ativo];
+    if (ativo is bool) return ativo;
+
+    final status = tenantData[FirestoreFields.status];
+    if (status is String) {
+      final value = status.trim().toLowerCase();
+      return value == FirestoreStatus.ativo ||
+          value == 'active' ||
+          value == 'enabled';
+    }
+
     // Compatibilidade com tenant antigo sem status explicito.
     return true;
   }

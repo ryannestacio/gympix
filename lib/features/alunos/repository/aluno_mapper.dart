@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/constants/firestore_fields.dart';
 import '../models/aluno.dart';
 
 /// Converte [Aluno] e [PagamentoMensal] para/de documentos do Firestore.
@@ -10,10 +11,16 @@ class AlunoMapper {
 
   /// Converte um [Aluno] em mapa para criação no Firestore.
   static Map<String, Object?> toFirestoreCreate(Aluno aluno) {
+    final nowTimestamp = FieldValue.serverTimestamp();
     return {
       ...toFirestoreUpdate(aluno),
+      FirestoreFields.createdAt: nowTimestamp,
+      FirestoreFields.updatedAt: nowTimestamp,
       'criadoEm': FieldValue.serverTimestamp(),
-      'ativo': aluno.ativo,
+      FirestoreFields.ativo: aluno.ativo,
+      FirestoreFields.status: aluno.ativo
+          ? FirestoreStatus.ativo
+          : FirestoreStatus.arquivado,
       'arquivadoEm': aluno.arquivadoEm == null
           ? null
           : Timestamp.fromDate(aluno.arquivadoEm!),
@@ -32,16 +39,19 @@ class AlunoMapper {
       'observacao': aluno.observacao,
       'diaVencimento': aluno.diaVencimento,
       'mensalidade': aluno.mensalidade,
+      FirestoreFields.updatedAt: FieldValue.serverTimestamp(),
     };
   }
 
   /// Converte [DocumentSnapshot] em [Aluno].
   static Aluno fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? <String, dynamic>{};
-    final criado = data['criadoEm'];
+    final createdAtRaw = data[FirestoreFields.createdAt];
+    final criado = createdAtRaw ?? data['criadoEm'];
     final arquivado = data['arquivadoEm'];
     final diaVencimento = _parseDia(data['diaVencimento'], 1);
     final mensalidade = _parseDouble(data['mensalidade'], 0);
+    final status = data[FirestoreFields.status];
 
     final pagamentos = <String, PagamentoMensal>{};
     final rawPagamentos = data['pagamentos'];
@@ -67,6 +77,8 @@ class AlunoMapper {
       }
     }
 
+    final ativoFromFlag = data[FirestoreFields.ativo];
+    final ativoFromStatus = _statusToAtivo(status);
     return Aluno(
       id: doc.id,
       nome: (data['nome'] ?? '') as String,
@@ -76,7 +88,7 @@ class AlunoMapper {
       mensalidade: mensalidade,
       criadoEm: (criado is Timestamp) ? criado.toDate() : DateTime.now(),
       pagamentos: pagamentos,
-      ativo: data['ativo'] as bool? ?? true,
+      ativo: ativoFromFlag is bool ? ativoFromFlag : (ativoFromStatus ?? true),
       arquivadoEm: arquivado is Timestamp ? arquivado.toDate() : null,
       pagoLegado: data['pago'] as bool?,
     );
@@ -156,10 +168,18 @@ class AlunoMapper {
         : PagamentoStatus.pendente;
   }
 
-  static bool _isVencimentoEmAtraso(
-    DateTime referenceDate,
-    int diaVencimento,
-  ) {
+  static bool? _statusToAtivo(dynamic value) {
+    if (value is! String) return null;
+    final normalized = value.trim().toLowerCase();
+    if (normalized == FirestoreStatus.ativo) return true;
+    if (normalized == FirestoreStatus.arquivado ||
+        normalized == FirestoreStatus.inativo) {
+      return false;
+    }
+    return null;
+  }
+
+  static bool _isVencimentoEmAtraso(DateTime referenceDate, int diaVencimento) {
     final hoje = DateTime(
       referenceDate.year,
       referenceDate.month,

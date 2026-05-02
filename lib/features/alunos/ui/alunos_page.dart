@@ -390,7 +390,7 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
         SnackBar(
           content: const Text('Aluno salvo com sucesso.'),
           action: SnackBarAction(
-            label: 'Cadastro rapido',
+            label: 'Cadastro r\u00e1pido',
             onPressed: () => _onNovoAluno(defaultMensalidade),
           ),
         ),
@@ -410,7 +410,9 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
     if (alunos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Nao ha alunos na visao atual para exportar.'),
+          content: Text(
+            'N\u00e3o h\u00e1 alunos na vis\u00e3o atual para exportar.',
+          ),
         ),
       );
       return;
@@ -420,7 +422,7 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('CSV da visao atual exportado com sucesso.'),
+          content: Text('CSV da vis\u00e3o atual exportado com sucesso.'),
         ),
       );
     } catch (e) {
@@ -438,7 +440,9 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
     if (alunos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Nao ha alunos na visao atual para exportar.'),
+          content: Text(
+            'N\u00e3o h\u00e1 alunos na vis\u00e3o atual para exportar.',
+          ),
         ),
       );
       return;
@@ -448,7 +452,7 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('PDF da visao atual exportado com sucesso.'),
+          content: Text('PDF da vis\u00e3o atual exportado com sucesso.'),
         ),
       );
     } catch (e) {
