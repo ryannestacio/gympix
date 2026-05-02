@@ -17,7 +17,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   static const _logoLightPath = 'assets/images/logo-gympix-colorida.png';
   static const _contactPhoneDigits = '5582982199052';
   static const _contactMessage =
-      'Ola, Ryan! Tenho interesse em obter o app GymPix.';
+      'Olá, Ryan! Tenho interesse em obter o app GymPix.';
   static final _emailRegex = RegExp(
     r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$",
   );
@@ -75,6 +75,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final authAction = ref.watch(authControllerProvider);
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
     final isDark = theme.brightness == Brightness.dark;
 
     ref.listen(authControllerProvider, (previous, next) {
@@ -111,6 +112,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final buttonForeground = isDark ? const Color(0xFF0D1016) : Colors.white;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: headerBackground,
       body: SafeArea(
         bottom: false,
@@ -168,6 +170,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         children: [
                           Expanded(
                             child: SingleChildScrollView(
+                              padding: EdgeInsets.only(
+                                bottom: keyboardInset + AppTheme.spacingLg,
+                              ),
                               keyboardDismissBehavior:
                                   ScrollViewKeyboardDismissBehavior.onDrag,
                               child: AutofillGroup(

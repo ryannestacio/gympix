@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_theme_extensions.dart';
 import '../../../../core/utils/currency_input_formatter.dart';
+import '../../../../core/utils/first_letter_uppercase_formatter.dart';
 import '../../models/aluno.dart';
 
 class HistoricoAlunoSheet extends StatefulWidget {
@@ -468,6 +469,8 @@ class _RegistroPagamentoSheetState extends State<RegistroPagamentoSheet> {
             const SizedBox(height: AppTheme.spacingSm),
             TextFormField(
               controller: _obsController,
+              textCapitalization: TextCapitalization.sentences,
+              inputFormatters: const [FirstLetterUppercaseFormatter()],
               minLines: 2,
               maxLines: 4,
               decoration: const InputDecoration(
@@ -489,7 +492,7 @@ class _RegistroPagamentoSheetState extends State<RegistroPagamentoSheet> {
                         : _comprovanteController.text.trim(),
                     observacao: _obsController.text.trim().isEmpty
                         ? null
-                        : _obsController.text.trim(),
+                        : forceFirstLetterUppercase(_obsController.text.trim()),
                   ),
                 );
               },

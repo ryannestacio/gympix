@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_input_formatter.dart';
+import '../../../core/utils/first_letter_uppercase_formatter.dart';
 import '../../../core/utils/phone_input_formatter.dart';
 import '../models/aluno.dart';
 
@@ -169,6 +170,8 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
             TextFormField(
               controller: _nome,
               textInputAction: TextInputAction.next,
+              textCapitalization: TextCapitalization.words,
+              inputFormatters: const [FirstLetterUppercaseFormatter()],
               decoration: const InputDecoration(labelText: 'Nome'),
               validator: (v) {
                 final nome = _normalizeName(v ?? '');
@@ -197,6 +200,8 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
             TextFormField(
               controller: _observacao,
               textInputAction: TextInputAction.next,
+              textCapitalization: TextCapitalization.sentences,
+              inputFormatters: const [FirstLetterUppercaseFormatter()],
               minLines: 2,
               maxLines: 3,
               decoration: const InputDecoration(
@@ -289,11 +294,13 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
 }
 
 String _normalizeName(String value) {
-  return value.trim().replaceAll(RegExp(r'\s+'), ' ');
+  final normalized = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+  return forceFirstLetterUppercase(normalized);
 }
 
 String _normalizeObservation(String value) {
-  return value.trim().replaceAll(RegExp(r'[ \t]+'), ' ');
+  final normalized = value.trim().replaceAll(RegExp(r'[ \t]+'), ' ');
+  return forceFirstLetterUppercase(normalized);
 }
 
 String _onlyDigits(String value) {
