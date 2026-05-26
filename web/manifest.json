@@ -1,11 +1,11 @@
 {
-    "name": "gym_easy_2",
-    "short_name": "gym_easy_2",
-    "start_url": ".",
+    "name": "GymPix",
+    "short_name": "GymPix",
+    "start_url": "/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0A0C10",
+    "theme_color": "#0A0C10",
+    "description": "GymPix: gestão de alunos, mensalidades e cobranças via Pix para academias.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

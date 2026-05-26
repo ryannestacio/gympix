@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -8,8 +9,10 @@ class VencimentoHojeNotificationService {
   final FlutterLocalNotificationsPlugin _plugin;
   bool _initialized = false;
   static String? _lastNotifiedDateKey;
+  static const bool _supportsLocalNotifications = !kIsWeb;
 
   Future<void> _init() async {
+    if (!_supportsLocalNotifications) return;
     if (_initialized) return;
     try {
       const settings = InitializationSettings(
@@ -28,6 +31,7 @@ class VencimentoHojeNotificationService {
 
   Future<void> notifyDueToday({required int totalAlunos, DateTime? now}) async {
     if (totalAlunos <= 0) return;
+    if (!_supportsLocalNotifications) return;
     final reference = now ?? DateTime.now();
     final dateKey = _dateKey(reference);
     if (_lastNotifiedDateKey == dateKey) return;
@@ -59,6 +63,7 @@ class VencimentoHojeNotificationService {
   }
 
   Future<void> _requestPermissions() async {
+    if (!_supportsLocalNotifications) return;
     final androidImplementation = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin

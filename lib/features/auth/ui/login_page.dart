@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -51,22 +53,34 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final uri = Uri.parse(
       'https://wa.me/$_contactPhoneDigits?text=$encodedMessage',
     );
+    const mode = kIsWeb
+        ? LaunchMode.platformDefault
+        : LaunchMode.externalApplication;
 
     try {
-      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final opened = await launchUrl(uri, mode: mode);
       if (opened || !mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nao foi possivel abrir o WhatsApp no momento.'),
-        ),
-      );
     } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nao foi possivel abrir o WhatsApp no momento.'),
-        ),
-      );
+      // Fallback abaixo para evitar friccao no Web/browsers mais restritivos.
+    }
+
+    if (!mounted) return;
+    final copied = await _copyTextSafely(uri.toString());
+    if (!mounted) return;
+    final message = copied
+        ? 'Nao foi possivel abrir o WhatsApp. Link copiado para a area de transferencia.'
+        : 'Nao foi possivel abrir o WhatsApp no momento.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<bool> _copyTextSafely(String text) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: text));
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 

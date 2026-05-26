@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -8,8 +9,10 @@ class CobrancaNotificationService {
 
   final FlutterLocalNotificationsPlugin _plugin;
   bool _initialized = false;
+  static const bool _supportsLocalNotifications = !kIsWeb;
 
   Future<void> init() async {
+    if (!_supportsLocalNotifications) return;
     if (_initialized) return;
     try {
       const settings = InitializationSettings(
@@ -31,6 +34,7 @@ class CobrancaNotificationService {
     required String body,
     String? payload,
   }) async {
+    if (!_supportsLocalNotifications) return;
     try {
       await init();
       if (!_initialized) return;
