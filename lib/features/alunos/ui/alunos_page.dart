@@ -187,6 +187,7 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
   @override
   Widget build(BuildContext context) {
     ref.watch(pagamentosAcumuladosBackfillRunnerProvider);
+    ref.watch(matriculasBackfillRunnerProvider);
     final paginationState = ref.watch(_alunosPaginados);
     final ativosPaginados = paginationState.value ?? const <Aluno>[];
     final historicoAsync = ref.watch(alunosHistoricoStreamProvider);
@@ -320,7 +321,7 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
                               key: ValueKey(alunos[i].id),
                               delay: i > 8 ? 0 : i * 30,
                               child: AlunoCard(
-                                aluno: alunos[i],
+                                alunoId: alunos[i].id,
                                 defaultMensalidade: defaultMensalidade,
                                 onSynced: markSynced,
                               ),
@@ -354,16 +355,33 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
     );
   }
 
+  String _calcularProximaMatricula(List<Aluno> alunos) {
+    var maxMatriculaInt = 0;
+    for (final a in alunos) {
+      if (a.matricula != null && a.matricula!.trim().isNotEmpty) {
+        final parsed = int.tryParse(a.matricula!.replaceAll(RegExp(r'\D'), ''));
+        if (parsed != null && parsed > maxMatriculaInt) {
+          maxMatriculaInt = parsed;
+        }
+      }
+    }
+    return (maxMatriculaInt + 1).toString().padLeft(4, '0');
+  }
+
   Future<void> _onNovoAluno(double? defaultMensalidade) async {
     if (_openingForm) return;
 
     setState(() => _openingForm = true);
+    final alunos = ref.read(alunosHistoricoStreamProvider).value ?? const <Aluno>[];
+    final seedMatricula = _calcularProximaMatricula(alunos);
+
     final result = await AlunoFormSheet.show(
       context,
       title: 'Novo aluno',
       defaultMensalidade: defaultMensalidade,
       seedDiaVencimento: _ultimoDiaVencimento,
       seedMensalidade: _ultimaMensalidade,
+      seedMatricula: seedMatricula,
     );
     if (mounted) setState(() => _openingForm = false);
     if (result == null) return;
@@ -379,6 +397,7 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
               diaVencimento: result.diaVencimento,
               mensalidade: result.mensalidade,
               pago: result.pago,
+              matricula: result.matricula,
             ),
           );
       _ultimoDiaVencimento = result.diaVencimento;

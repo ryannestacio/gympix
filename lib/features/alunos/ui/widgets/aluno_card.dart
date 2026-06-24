@@ -1,15 +1,13 @@
 import 'dart:async';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/domain/inadimplencia_config.dart';
 import '../../../../core/domain/inadimplencia_status.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -22,16 +20,18 @@ import '../../services/telefone_whatsapp_service.dart';
 import '../../usecases/aluno_cadastro_input.dart';
 import '../aluno_form_sheet.dart';
 import 'aluno_history_sheet.dart';
+import '../../providers/alunos_providers.dart';
+import 'aluno_receipt_dialog.dart';
 
 class AlunoCard extends ConsumerStatefulWidget {
   const AlunoCard({
     super.key,
-    required this.aluno,
+    required this.alunoId,
     required this.defaultMensalidade,
     required this.onSynced,
   });
 
-  final Aluno aluno;
+  final String alunoId;
   final double? defaultMensalidade;
   final VoidCallback onSynced;
 
@@ -51,7 +51,13 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
   Color? _feedbackColor;
   Timer? _feedbackTimer;
 
-  Aluno get aluno => widget.aluno;
+  Aluno get aluno {
+    final a = ref.read(alunoProvider(widget.alunoId));
+    if (a == null) {
+      throw StateError('Aluno não disponível');
+    }
+    return a;
+  }
 
   Aluno _draftFromAluno() {
     return Aluno(
@@ -75,6 +81,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       diaVencimento: result.diaVencimento,
       mensalidade: result.mensalidade,
       pago: result.pago,
+      matricula: result.matricula,
     );
   }
 
@@ -104,6 +111,10 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
 
   @override
   Widget build(BuildContext context) {
+    final aluno = ref.watch(alunoProvider(widget.alunoId));
+    if (aluno == null) {
+      return const SizedBox.shrink();
+    }
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final configAsync = ref.watch(inadimplenciaConfigStreamProvider);
@@ -166,11 +177,44 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  aluno.nome,
-                  style: textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            aluno.nome,
+                            style: textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (aluno.hasPendingWrites) ...[
+                          const SizedBox(width: 8),
+                          Tooltip(
+                            message: 'Sincronização pendente',
+                            child: Icon(
+                              Icons.cloud_upload_outlined,
+                              size: 16,
+                              color: scheme.primary.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (aluno.matricula != null &&
+                        aluno.matricula!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Matr\u00edcula: ${aluno.matricula}',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               PopupMenuButton<String>(
@@ -383,9 +427,10 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
                                     !temTelefoneWhatsAppValido(aluno.telefone)
                                 ? null
                                 : _onWhatsApp,
-                            icon: const Icon(
-                              Icons.chat_bubble_outline_rounded,
+                            icon: const FaIcon(
+                              FontAwesomeIcons.whatsapp,
                               size: 18,
+                              color: Color(0xFF25D366),
                             ),
                             label: const Text('WhatsApp'),
                           ),
@@ -464,9 +509,10 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
                                   !temTelefoneWhatsAppValido(aluno.telefone)
                               ? null
                               : _onWhatsApp,
-                          icon: const Icon(
-                            Icons.chat_bubble_outline_rounded,
+                          icon: const FaIcon(
+                            FontAwesomeIcons.whatsapp,
                             size: 18,
+                            color: Color(0xFF25D366),
                           ),
                           label: const Text('WhatsApp'),
                         ),
@@ -641,12 +687,29 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
     );
   }
 
+  String _calcularProximaMatricula(List<Aluno> alunos) {
+    var maxMatriculaInt = 0;
+    for (final a in alunos) {
+      if (a.matricula != null && a.matricula!.trim().isNotEmpty) {
+        final parsed = int.tryParse(a.matricula!.replaceAll(RegExp(r'\D'), ''));
+        if (parsed != null && parsed > maxMatriculaInt) {
+          maxMatriculaInt = parsed;
+        }
+      }
+    }
+    return (maxMatriculaInt + 1).toString().padLeft(4, '0');
+  }
+
   Future<void> _onDuplicarCadastro() async {
+    final alunos = ref.read(alunosHistoricoStreamProvider).value ?? const <Aluno>[];
+    final seedMatricula = _calcularProximaMatricula(alunos);
+
     final result = await AlunoFormSheet.show(
       context,
       title: 'Duplicar cadastro',
       initial: _draftFromAluno(),
       defaultMensalidade: widget.defaultMensalidade,
+      seedMatricula: seedMatricula,
     );
     if (result == null) return;
 
@@ -680,151 +743,12 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
     final lembrete = await _buildMensagemCobranca(pixPayload);
 
     if (!mounted) return;
-    await showModalBottomSheet<void>(
+    await AlunoCobrarSheet.show(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      useRootNavigator: true,
-      builder: (context) => Container(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewPaddingOf(context).bottom + 16,
-        ),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(AppTheme.radiusLg),
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppTheme.spacingLg,
-              12,
-              AppTheme.spacingLg,
-              0,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Cobrar com Pix',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: AppTheme.spacingSm),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(
-                            AppTheme.radiusSm,
-                          ),
-                        ),
-                        child: QrImageView(
-                          data: pixPayload,
-                          size: 208,
-                          version: QrVersions.auto,
-                          backgroundColor: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        aluno.nome,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        valorCobranca,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Pix c\u00f3pia e cola',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                SelectableText(
-                  pixPayload,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: () => _copyPixPayload(
-                          pixPayload,
-                          successMessage: 'C\u00f3digo Pix copiado.',
-                        ),
-                        icon: const Icon(Icons.copy_rounded, size: 18),
-                        label: const Text('Copiar'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.tonal(
-                        onPressed: () => _sharePixQrPng(
-                          pixPayload: pixPayload,
-                          message:
-                              'QR Code Pix - ${aluno.nome} - $valorCobranca',
-                        ),
-                        child: const Text('Compartilhar QR'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                FilledButton.tonalIcon(
-                  onPressed: () =>
-                      _sharePixQrPng(pixPayload: pixPayload, message: lembrete),
-                  icon: const Icon(Icons.message_outlined, size: 18),
-                  label: const Text('Enviar mensagem pronta'),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: lembrete));
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Cobran\u00e7a copiada.')),
-                    );
-                  },
-                  icon: const Icon(Icons.copy_all_rounded, size: 18),
-                  label: const Text('Copiar cobran\u00e7a'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      aluno: aluno,
+      pixPayload: pixPayload,
+      valorCobranca: valorCobranca,
+      lembrete: lembrete,
     );
   }
 
@@ -925,7 +849,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       referencia,
       referenciaStatus: referenciaStatus,
     );
-    if (totalPendencias <= 1) return;
+    if (totalPendencias <= 0) return;
 
     final valorTotal = aluno.valorEmAbertoAte(
       referencia,
@@ -934,6 +858,9 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
     final competenciaLabel = totalPendencias == 1
         ? 'compet\u00eancia'
         : 'compet\u00eancias';
+    final quitadaLabel = totalPendencias == 1
+        ? 'quitada'
+        : 'quitadas';
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -965,10 +892,10 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       },
       operationId: operationId,
       successMessage:
-          '$totalPendencias $competenciaLabel quitadas com sucesso.',
+          '$totalPendencias $competenciaLabel $quitadaLabel com sucesso.',
       pendingMessage:
           'Quita\u00e7\u00e3o enviada. A sincroniza\u00e7\u00e3o pode levar alguns segundos.',
-      cardMessage: '$totalPendencias $competenciaLabel quitadas',
+      cardMessage: '$totalPendencias $competenciaLabel $quitadaLabel',
     );
   }
 
@@ -1053,7 +980,19 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
     if (pixPayload == null) return;
 
     final mensagem = await _buildMensagemCobranca(pixPayload);
-    await _sharePixQrPng(pixPayload: pixPayload, message: mensagem);
+    await _runGuarded(
+      () async {
+        await AlunoCobrarSheet.sharePixQr(
+          aluno: aluno,
+          pixPayload: pixPayload,
+          valorCobranca: _formatCurrency(aluno.pagamentoDoMes().valor),
+          message: mensagem,
+        );
+      },
+      operationId: 'aluno:${aluno.id}:lembrete',
+      successMessage: 'Lembrete compartilhado.',
+      pendingMessage: 'Gerando recibo para compartilhamento...',
+    );
   }
 
   Future<void> _onWhatsApp() async {
@@ -1135,210 +1074,5 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
     return ref
         .read(alunosActionsControllerProvider)
         .montarMensagemCobranca(aluno: aluno, pixPayload: pixPayload);
-  }
-
-  Future<void> _copyPixPayload(
-    String payload, {
-    required String successMessage,
-  }) async {
-    await Clipboard.setData(ClipboardData(text: payload));
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(successMessage)));
-  }
-
-  Future<Uint8List?> _buildPixQrPngBytes(String pixPayload) async {
-    final valorCobranca = _formatCurrency(aluno.pagamentoDoMes().valor);
-    final painter = QrPainter(
-      data: pixPayload,
-      version: QrVersions.auto,
-      gapless: true,
-      eyeStyle: const QrEyeStyle(
-        eyeShape: QrEyeShape.square,
-        color: Color(0xFF000000),
-      ),
-      dataModuleStyle: const QrDataModuleStyle(
-        dataModuleShape: QrDataModuleShape.square,
-        color: Color(0xFF000000),
-      ),
-    );
-    final imageData = await painter.toImageData(
-      920,
-      format: ui.ImageByteFormat.png,
-    );
-    if (imageData == null) return null;
-
-    final codec = await ui.instantiateImageCodec(
-      imageData.buffer.asUint8List(),
-    );
-    final frame = await codec.getNextFrame();
-    final qrImage = frame.image;
-
-    const canvasWidth = 1280.0;
-    const canvasHeight = 1580.0;
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-
-    canvas.drawRect(
-      const Rect.fromLTWH(0, 0, canvasWidth, canvasHeight),
-      Paint()..color = Colors.white,
-    );
-
-    final cardRect = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(64, 64, 1152, 1452),
-      const Radius.circular(40),
-    );
-    canvas.drawRRect(cardRect, Paint()..color = const Color(0xFFF8FAFC));
-    canvas.drawRRect(
-      cardRect,
-      Paint()
-        ..color = const Color(0xFFE2E8F0)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 4,
-    );
-
-    final qrContainer = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(150, 140, 980, 980),
-      const Radius.circular(28),
-    );
-    canvas.drawRRect(qrContainer, Paint()..color = Colors.white);
-    canvas.drawRRect(
-      qrContainer,
-      Paint()
-        ..color = const Color(0xFFE5E7EB)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3,
-    );
-
-    const qrRect = Rect.fromLTWH(180, 170, 920, 920);
-    canvas.drawImageRect(
-      qrImage,
-      Rect.fromLTWH(0, 0, qrImage.width.toDouble(), qrImage.height.toDouble()),
-      qrRect,
-      Paint(),
-    );
-
-    _paintCenteredText(
-      canvas,
-      text: aluno.nome,
-      top: 1150,
-      style: const TextStyle(
-        color: Color(0xFF0F172A),
-        fontSize: 52,
-        fontWeight: FontWeight.w700,
-      ),
-    );
-
-    _paintCenteredText(
-      canvas,
-      text: valorCobranca,
-      top: 1220,
-      style: const TextStyle(
-        color: Color(0xFF2563EB),
-        fontSize: 62,
-        fontWeight: FontWeight.w800,
-      ),
-    );
-
-    canvas.drawLine(
-      const Offset(180, 1328),
-      const Offset(1100, 1328),
-      Paint()
-        ..color = const Color(0xFFE2E8F0)
-        ..strokeWidth = 3,
-    );
-
-    _paintCenteredText(
-      canvas,
-      text: AppConstants.appName,
-      top: 1370,
-      style: const TextStyle(
-        color: Color(0xFF111827),
-        fontSize: 54,
-        fontWeight: FontWeight.w800,
-      ),
-    );
-
-    _paintCenteredText(
-      canvas,
-      text: 'QR Code Pix para pagamento',
-      top: 1444,
-      style: const TextStyle(
-        color: Color(0xFF64748B),
-        fontSize: 34,
-        fontWeight: FontWeight.w500,
-      ),
-    );
-
-    final picture = recorder.endRecording();
-    final composedImage = await picture.toImage(
-      canvasWidth.toInt(),
-      canvasHeight.toInt(),
-    );
-    final composedData = await composedImage.toByteData(
-      format: ui.ImageByteFormat.png,
-    );
-    return composedData?.buffer.asUint8List();
-  }
-
-  void _paintCenteredText(
-    Canvas canvas, {
-    required String text,
-    required double top,
-    required TextStyle style,
-  }) {
-    final painter = TextPainter(
-      text: TextSpan(text: text, style: style),
-      textAlign: TextAlign.center,
-      textDirection: ui.TextDirection.ltr,
-      maxLines: 1,
-      ellipsis: '...',
-    )..layout(maxWidth: 980);
-
-    painter.paint(canvas, Offset((1280 - painter.width) / 2, top));
-  }
-
-  Future<void> _sharePixQrPng({
-    required String pixPayload,
-    required String message,
-  }) async {
-    try {
-      final pngBytes = await _buildPixQrPngBytes(pixPayload);
-      if (pngBytes == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'N\u00e3o foi poss\u00edvel gerar a imagem do QR Code.',
-            ),
-          ),
-        );
-        return;
-      }
-
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [
-            XFile.fromData(
-              pngBytes,
-              mimeType: 'image/png',
-              name: 'gympix-cobranca-${aluno.nome}.png',
-            ),
-          ],
-          text: message,
-          subject: 'Cobran\u00e7a Pix - ${aluno.nome}',
-        ),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'N\u00e3o foi poss\u00edvel compartilhar o QR Code Pix.',
-          ),
-        ),
-      );
-    }
   }
 }

@@ -39,6 +39,7 @@ class AlunoMapper {
       'observacao': aluno.observacao,
       'diaVencimento': aluno.diaVencimento,
       'mensalidade': aluno.mensalidade,
+      'matricula': aluno.matricula,
       FirestoreFields.updatedAt: FieldValue.serverTimestamp(),
     };
   }
@@ -52,6 +53,8 @@ class AlunoMapper {
     final diaVencimento = _parseDia(data['diaVencimento'], 1);
     final mensalidade = _parseDouble(data['mensalidade'], 0);
     final status = data[FirestoreFields.status];
+    final matriculaRaw = data['matricula'];
+    final matricula = matriculaRaw is String ? matriculaRaw.trim() : null;
 
     final pagamentos = <String, PagamentoMensal>{};
     final rawPagamentos = data['pagamentos'];
@@ -91,6 +94,8 @@ class AlunoMapper {
       ativo: ativoFromFlag is bool ? ativoFromFlag : (ativoFromStatus ?? true),
       arquivadoEm: arquivado is Timestamp ? arquivado.toDate() : null,
       pagoLegado: data['pago'] as bool?,
+      matricula: matricula,
+      hasPendingWrites: doc.metadata.hasPendingWrites,
     );
   }
 

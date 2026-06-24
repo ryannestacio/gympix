@@ -27,6 +27,7 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(vencimentoHojeNotificationRunnerProvider);
     ref.watch(pagamentosAcumuladosBackfillRunnerProvider);
+    ref.watch(matriculasBackfillRunnerProvider);
     final competenciaSelecionada = ref.watch(competenciaSelecionadaProvider);
     final report = ref.watch(competenciaReportProvider);
     final stats = ref.watch(dashboardStatsProvider);

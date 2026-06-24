@@ -52,6 +52,15 @@ final alunosHistoricoStreamProvider = StreamProvider.autoDispose<List<Aluno>>((
   return ref.watch(alunosRepositoryProvider).watchTodosAlunos();
 });
 
+final alunoProvider = Provider.family.autoDispose<Aluno?, String>((ref, id) {
+  final list = ref.watch(alunosHistoricoStreamProvider).value;
+  if (list == null) return null;
+  for (final a in list) {
+    if (a.id == id) return a;
+  }
+  return null;
+});
+
 final vencimentoHojeNotificationServiceProvider =
     Provider<VencimentoHojeNotificationService>((ref) {
       return VencimentoHojeNotificationService();
@@ -92,6 +101,21 @@ final pagamentosAcumuladosBackfillRunnerProvider =
         return await ref
             .read(alunosRepositoryProvider)
             .backfillPagamentosAcumulados(alunos: alunos);
+      } catch (_) {
+        return 0;
+      }
+    });
+
+final matriculasBackfillRunnerProvider =
+    FutureProvider.autoDispose<int>((ref) async {
+      final alunos =
+          ref.watch(alunosHistoricoStreamProvider).value ?? const <Aluno>[];
+      if (alunos.isEmpty) return 0;
+
+      try {
+        return await ref
+            .read(alunosRepositoryProvider)
+            .backfillMatriculas(alunos: alunos);
       } catch (_) {
         return 0;
       }

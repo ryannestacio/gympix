@@ -6,6 +6,7 @@ class AlunoCadastroInput {
     required this.diaVencimento,
     required this.mensalidade,
     required this.pago,
+    this.matricula,
   });
 
   final String nome;
@@ -14,4 +15,5 @@ class AlunoCadastroInput {
   final int diaVencimento;
   final double mensalidade;
   final bool pago;
+  final String? matricula;
 }

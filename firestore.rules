@@ -18,9 +18,8 @@ service cloud.firestore {
     }
 
     function membershipIsActive() {
-      return (membership().ativo is bool && membership().ativo == true) ||
-          (membership().status is string &&
-              membership().status in ['ativo', 'active', 'enabled']);
+      return membership().get('ativo', false) == true ||
+          (membership().get('status', '') in ['ativo', 'active', 'enabled']);
     }
 
     function tenantExists(tenantId) {
@@ -29,29 +28,28 @@ service cloud.firestore {
 
     function tenant() {
       return get(
-        /databases/$(database)/documents/tenants/$(membership().tenantId),
+        /databases/$(database)/documents/tenants/$(membership().get('tenantId', '')),
       ).data;
     }
 
     function tenantIsActive() {
-      return (tenant().ativo is bool && tenant().ativo == true) ||
-          (tenant().status is string &&
-              tenant().status in ['ativo', 'active', 'enabled']) ||
-          (tenant().ativo == null && tenant().status == null);
+      return tenant().get('ativo', false) == true ||
+          (tenant().get('status', '') in ['ativo', 'active', 'enabled']) ||
+          (tenant().get('ativo', null) == null && tenant().get('status', null) == null);
     }
 
     function hasTenantAccess(tenantId) {
       return hasMembership() &&
-          (membership().tenantId is string) &&
-          membership().tenantId == tenantId &&
+          (membership().get('tenantId', '') is string) &&
+          membership().get('tenantId', '') == tenantId &&
           membershipIsActive() &&
           tenantExists(tenantId) &&
           tenantIsActive();
     }
 
     function incomingTenantFieldMatches(tenantId) {
-      return request.resource.data.tenantId == null ||
-          request.resource.data.tenantId == tenantId;
+      return request.resource.data.get('tenantId', null) == null ||
+          request.resource.data.get('tenantId', null) == tenantId;
     }
 
     function isBootstrapTenant(tenantId) {
@@ -59,8 +57,8 @@ service cloud.firestore {
     }
 
     function isActiveFlagOrStatus(data) {
-      return (data.ativo is bool && data.ativo == true) ||
-          (data.status is string && data.status in ['ativo', 'active', 'enabled']);
+      return data.get('ativo', false) == true ||
+          (data.get('status', '') in ['ativo', 'active', 'enabled']);
     }
 
     // Vínculo do usuário autenticado ao tenant (somente leitura própria).

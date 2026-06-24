@@ -10,6 +10,7 @@ abstract class AlunosWriteRepository {
     required int diaVencimento,
     required double mensalidade,
     required bool pago,
+    String? matricula,
   });
 
   Future<void> updateAluno(Aluno aluno);
@@ -38,6 +39,7 @@ class AlunosRepositoryWriteAdapter implements AlunosWriteRepository {
     required int diaVencimento,
     required double mensalidade,
     required bool pago,
+    String? matricula,
   }) {
     return _repository.createAluno(
       nome: nome,
@@ -46,6 +48,7 @@ class AlunosRepositoryWriteAdapter implements AlunosWriteRepository {
       diaVencimento: diaVencimento,
       mensalidade: mensalidade,
       pago: pago,
+      matricula: matricula,
     );
   }
 
@@ -92,6 +95,7 @@ class SalvarAlunoUseCase {
       diaVencimento: input.diaVencimento,
       mensalidade: input.mensalidade,
       pago: input.pago,
+      matricula: input.matricula,
     );
   }
 
@@ -105,6 +109,7 @@ class SalvarAlunoUseCase {
       observacao: input.observacao,
       diaVencimento: input.diaVencimento,
       mensalidade: input.mensalidade,
+      matricula: input.matricula,
     );
 
     final mensalidadeMudou = input.mensalidade != original.mensalidade;

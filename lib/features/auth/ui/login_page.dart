@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../controllers/auth_controller.dart';
@@ -481,7 +482,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             height: 44,
                             child: OutlinedButton.icon(
                               onPressed: _openWhatsAppContact,
-                              icon: const Icon(Icons.chat_outlined),
+                              icon: const FaIcon(
+                                FontAwesomeIcons.whatsapp,
+                                size: 18,
+                                color: Color(0xFF25D366),
+                              ),
                               label: const Text(
                                 'Entrar em contato no WhatsApp',
                               ),

@@ -113,6 +113,7 @@ class AlunosRepository {
     required int diaVencimento,
     required double mensalidade,
     required bool pago,
+    String? matricula,
   }) {
     final competencia = Aluno.competenciaAtual();
     final now = DateTime.now();
@@ -141,6 +142,7 @@ class AlunosRepository {
       criadoEm: DateTime.now(),
       pagamentos: {competencia: pagamentoInicial},
       pagoLegado: null,
+      matricula: matricula?.trim().isEmpty == true ? null : matricula?.trim(),
     );
 
     final payload = {
@@ -375,5 +377,43 @@ class AlunosRepository {
     }
 
     return faltantes;
+  }
+
+  Future<int> backfillMatriculas({required Iterable<Aluno> alunos}) async {
+    final semMatricula = alunos
+        .where((a) => a.matricula == null || a.matricula!.trim().isEmpty)
+        .toList();
+    if (semMatricula.isEmpty) return 0;
+
+    final todosOrdenados = alunos.toList()
+      ..sort((a, b) => a.criadoEm.compareTo(b.criadoEm));
+
+    var maxMatriculaInt = 0;
+    for (final a in todosOrdenados) {
+      if (a.matricula != null && a.matricula!.trim().isNotEmpty) {
+        final parsed = int.tryParse(a.matricula!.replaceAll(RegExp(r'\D'), ''));
+        if (parsed != null && parsed > maxMatriculaInt) {
+          maxMatriculaInt = parsed;
+        }
+      }
+    }
+
+    var matriculasAtribuidas = 0;
+    semMatricula.sort((a, b) => a.criadoEm.compareTo(b.criadoEm));
+
+    for (final aluno in semMatricula) {
+      maxMatriculaInt++;
+      final novaMatricula = maxMatriculaInt.toString().padLeft(4, '0');
+
+      final data = {
+        'matricula': novaMatricula,
+        FirestoreFields.updatedAt: FieldValue.serverTimestamp(),
+      };
+
+      await _retryPolicy.execute(() => _alunosCol.doc(aluno.id).update(data));
+      matriculasAtribuidas++;
+    }
+
+    return matriculasAtribuidas;
   }
 }

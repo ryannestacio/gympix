@@ -57,6 +57,29 @@ class PagamentoMensal {
       PagamentoStatus.pendente => 'Pendente',
     };
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is PagamentoMensal &&
+        other.competencia == competencia &&
+        other.valor == valor &&
+        other.status == status &&
+        other.diaVencimento == diaVencimento &&
+        other.pagoEm == pagoEm &&
+        other.comprovanteUrl == comprovanteUrl &&
+        other.observacao == observacao;
+  }
+
+  @override
+  int get hashCode =>
+      competencia.hashCode ^
+      valor.hashCode ^
+      status.hashCode ^
+      diaVencimento.hashCode ^
+      pagoEm.hashCode ^
+      comprovanteUrl.hashCode ^
+      observacao.hashCode;
 }
 
 /// Aluno da academia com dados de cadastro e pagamentos.
@@ -73,6 +96,8 @@ class Aluno {
     this.ativo = true,
     this.arquivadoEm,
     this.pagoLegado,
+    this.matricula,
+    this.hasPendingWrites = false,
   });
 
   final String id;
@@ -86,6 +111,8 @@ class Aluno {
   final bool ativo;
   final DateTime? arquivadoEm;
   final bool? pagoLegado;
+  final String? matricula;
+  final bool hasPendingWrites;
 
   static String competenciaAtual([DateTime? now]) {
     final d = now ?? DateTime.now();
@@ -295,6 +322,8 @@ class Aluno {
     bool? ativo,
     DateTime? arquivadoEm,
     bool? pagoLegado,
+    String? matricula,
+    bool? hasPendingWrites,
   }) {
     return Aluno(
       id: id ?? this.id,
@@ -308,8 +337,54 @@ class Aluno {
       ativo: ativo ?? this.ativo,
       arquivadoEm: arquivadoEm ?? this.arquivadoEm,
       pagoLegado: pagoLegado ?? this.pagoLegado,
+      matricula: matricula ?? this.matricula,
+      hasPendingWrites: hasPendingWrites ?? this.hasPendingWrites,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! Aluno) return false;
+    
+    if (other.id != id ||
+        other.nome != nome ||
+        other.telefone != telefone ||
+        other.observacao != observacao ||
+        other.diaVencimento != diaVencimento ||
+        other.mensalidade != mensalidade ||
+        other.criadoEm != criadoEm ||
+        other.ativo != ativo ||
+        other.arquivadoEm != arquivadoEm ||
+        other.pagoLegado != pagoLegado ||
+        other.matricula != matricula ||
+        other.hasPendingWrites != hasPendingWrites) {
+      return false;
+    }
+
+    if (other.pagamentos.length != pagamentos.length) return false;
+    for (final key in pagamentos.keys) {
+      if (other.pagamentos[key] != pagamentos[key]) return false;
+    }
+
+    return true;
+  }
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      nome.hashCode ^
+      telefone.hashCode ^
+      observacao.hashCode ^
+      diaVencimento.hashCode ^
+      mensalidade.hashCode ^
+      criadoEm.hashCode ^
+      pagamentos.hashCode ^
+      ativo.hashCode ^
+      arquivadoEm.hashCode ^
+      pagoLegado.hashCode ^
+      matricula.hashCode ^
+      hasPendingWrites.hashCode;
 
   /// Calcula o status de inadimplencia deste aluno usando as configuracoes padrao.
   /// Para usar config customizada, chame [InadimplenciaCalculator.calcular] diretamente.

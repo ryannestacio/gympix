@@ -145,6 +145,7 @@ class _FakeAlunosWriteRepository implements AlunosWriteRepository {
     required int diaVencimento,
     required double mensalidade,
     required bool pago,
+    String? matricula,
   }) async {
     createCalls++;
   }

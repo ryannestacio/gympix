@@ -15,6 +15,7 @@ class AlunoFormResult {
     required this.diaVencimento,
     required this.mensalidade,
     required this.pago,
+    this.matricula,
   });
 
   final String nome;
@@ -23,6 +24,7 @@ class AlunoFormResult {
   final int diaVencimento;
   final double mensalidade;
   final bool pago;
+  final String? matricula;
 }
 
 class AlunoFormSheet extends StatefulWidget {
@@ -33,6 +35,7 @@ class AlunoFormSheet extends StatefulWidget {
     this.defaultMensalidade,
     this.seedDiaVencimento,
     this.seedMensalidade,
+    this.seedMatricula,
   });
 
   final String title;
@@ -40,6 +43,7 @@ class AlunoFormSheet extends StatefulWidget {
   final double? defaultMensalidade;
   final int? seedDiaVencimento;
   final double? seedMensalidade;
+  final String? seedMatricula;
 
   static Future<AlunoFormResult?> show(
     BuildContext context, {
@@ -48,6 +52,7 @@ class AlunoFormSheet extends StatefulWidget {
     double? defaultMensalidade,
     int? seedDiaVencimento,
     double? seedMensalidade,
+    String? seedMatricula,
   }) {
     return showModalBottomSheet<AlunoFormResult>(
       context: context,
@@ -83,6 +88,7 @@ class AlunoFormSheet extends StatefulWidget {
                 defaultMensalidade: defaultMensalidade,
                 seedDiaVencimento: seedDiaVencimento,
                 seedMensalidade: seedMensalidade,
+                seedMatricula: seedMatricula,
               ),
             ),
           ),
@@ -111,6 +117,9 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
   late final _mensalidade = TextEditingController(
     text: _mensalidadeInitialText(),
   );
+  late final _matricula = TextEditingController(
+    text: widget.initial?.matricula ?? widget.seedMatricula ?? '',
+  );
 
   bool _pago = false;
 
@@ -136,6 +145,7 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
     _observacao.dispose();
     _dia.dispose();
     _mensalidade.dispose();
+    _matricula.dispose();
     super.dispose();
   }
 
@@ -167,6 +177,21 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
               ),
             ),
             const SizedBox(height: 16),
+            TextFormField(
+              controller: _matricula,
+              textInputAction: TextInputAction.next,
+              keyboardType: TextInputType.text,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                labelText: 'Matr\u00edcula',
+                hintText: 'Ex: 0001',
+              ),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Informe a matr\u00edcula';
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
             TextFormField(
               controller: _nome,
               textInputAction: TextInputAction.next,
@@ -270,6 +295,7 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
                     diaVencimento: dia,
                     mensalidade: mensalidade,
                     pago: _pago,
+                    matricula: _matricula.text.trim().isEmpty ? null : _matricula.text.trim(),
                   ),
                 );
               },

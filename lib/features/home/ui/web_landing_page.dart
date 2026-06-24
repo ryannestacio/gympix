@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
 
@@ -245,7 +246,11 @@ class _HeroSection extends StatelessWidget {
                       height: 48,
                       child: OutlinedButton.icon(
                         onPressed: onContactTap,
-                        icon: const Icon(Icons.chat_outlined, size: 19),
+                        icon: const FaIcon(
+                          FontAwesomeIcons.whatsapp,
+                          size: 19,
+                          color: Color(0xFF25D366),
+                        ),
                         label: const Text('Falar no WhatsApp'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _LandingColors.text,
@@ -274,7 +279,11 @@ class _HeroSection extends StatelessWidget {
                       height: 48,
                       child: OutlinedButton.icon(
                         onPressed: onContactTap,
-                        icon: const Icon(Icons.chat_outlined, size: 19),
+                        icon: const FaIcon(
+                          FontAwesomeIcons.whatsapp,
+                          size: 19,
+                          color: Color(0xFF25D366),
+                        ),
                         label: const Text('Falar no WhatsApp'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _LandingColors.text,
