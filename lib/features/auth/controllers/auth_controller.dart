@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/services/firebase_bootstrap.dart';
 import '../providers/auth_providers.dart';
 
 part 'auth_controller.g.dart';
@@ -16,6 +17,7 @@ class AuthController extends _$AuthController {
     if (state.isLoading) return;
     state = const AsyncLoading();
     try {
+      await ensureFirebaseInitialized();
       await ref
           .read(authRepositoryProvider)
           .signInWithEmailAndPassword(email: email, password: password);
@@ -29,6 +31,7 @@ class AuthController extends _$AuthController {
     if (state.isLoading) return;
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
+      await ensureFirebaseInitialized();
       await ref.read(authRepositoryProvider).signOut();
     });
   }
@@ -37,6 +40,7 @@ class AuthController extends _$AuthController {
     if (state.isLoading) return;
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
+      await ensureFirebaseInitialized();
       await ref.read(authRepositoryProvider).sendPasswordResetEmail(email);
     });
   }

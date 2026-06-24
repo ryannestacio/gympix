@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -11,25 +12,31 @@ import '../../features/auth/ui/session_gate.dart';
 import '../../features/cobranca/ui/cobranca_page.dart';
 import '../../features/configuracoes/ui/config_page.dart';
 import '../../features/home/ui/home_page.dart';
+import '../../features/home/ui/web_landing_page.dart';
 import 'app_shell.dart';
 
 part 'app_router.g.dart';
 
 @riverpod
 GoRouter appRouter(Ref ref) {
-  final accessAsync = ref.watch(authAccessStateProvider);
-  final access = accessAsync.asData?.value;
-  final isResolving = accessAsync.isLoading && access == null;
+  const appHomePath = kIsWeb ? '/app' : '/';
+  const isWeb = kIsWeb;
 
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
       final location = state.matchedLocation;
+      final isWebLanding = isWeb && (location == '/' || location == '/site');
       final isLogin = location == '/login';
       final isDenied = location == '/access-denied';
       final isPublicCobranca = location == '/cobranca';
+      final isPublicRoute = isPublicCobranca || isWebLanding;
 
-      if (isPublicCobranca) return null;
+      if (isPublicRoute) return null;
+
+      final accessAsync = ref.read(authAccessStateProvider);
+      final access = accessAsync.asData?.value;
+      final isResolving = accessAsync.isLoading && access == null;
 
       if (isResolving) {
         return isLogin ? null : '/login';
@@ -40,10 +47,23 @@ GoRouter appRouter(Ref ref) {
         AuthAccessStatus.loading => isLogin ? null : '/login',
         AuthAccessStatus.unauthenticated => isLogin ? null : '/login',
         AuthAccessStatus.unauthorized => isDenied ? null : '/access-denied',
-        AuthAccessStatus.authorized => (isLogin || isDenied) ? '/' : null,
+        AuthAccessStatus.authorized =>
+          (isLogin || isDenied) ? appHomePath : null,
       };
     },
     routes: [
+      if (isWeb)
+        GoRoute(
+          path: '/',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: WebLandingPage()),
+        ),
+      if (isWeb)
+        GoRoute(
+          path: '/site',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: WebLandingPage()),
+        ),
       GoRoute(
         path: '/login',
         pageBuilder: (context, state) =>
@@ -61,7 +81,7 @@ GoRouter appRouter(Ref ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/',
+                path: appHomePath,
                 pageBuilder: (context, state) =>
                     const NoTransitionPage(child: HomePage()),
               ),

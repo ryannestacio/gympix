@@ -1,46 +1,46 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/constants/app_constants.dart';
 import 'core/router/app_router.dart';
+import 'core/services/firebase_bootstrap.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
-import 'firebase_options.dart';
 
-Future<FirebaseApp> _initializeFirebaseSafely() async {
-  if (Firebase.apps.isNotEmpty) return Firebase.app();
-  try {
-    return await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } on FirebaseException catch (e) {
-    if (e.code == 'duplicate-app') return Firebase.app();
-    rethrow;
-  }
-}
-
-Future<void> _configureFirestoreOfflineSafely() async {
-  final firestore = FirebaseFirestore.instance;
-  try {
-    firestore.settings = const Settings(
-      persistenceEnabled: true,
-      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-    );
-  } on FirebaseException catch (e) {
-    // Web multi-aba e alguns ambientes podem nao suportar esta configuracao.
-    if (e.code == 'failed-precondition' || e.code == 'unimplemented') return;
-    rethrow;
-  }
+bool _isPublicWebLandingPath(String path) {
+  final normalizedPath = path.isEmpty ? '/' : path;
+  return normalizedPath == '/' || normalizedPath == '/site';
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb) {
+    usePathUrlStrategy();
+  }
   await initializeDateFormatting('pt_BR');
-  await _initializeFirebaseSafely();
-  await _configureFirestoreOfflineSafely();
+
+  final firebaseReady = ensureFirebaseInitialized();
+  if (kIsWeb && _isPublicWebLandingPath(Uri.base.path)) {
+    unawaited(
+      firebaseReady.catchError((Object error, StackTrace stackTrace) {
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: error,
+            stack: stackTrace,
+            library: 'firebase bootstrap',
+          ),
+        );
+      }),
+    );
+  } else {
+    await firebaseReady;
+  }
+
   runApp(const ProviderScope(child: GymPixApp()));
 }
 

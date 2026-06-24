@@ -1,7 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/providers/firebase_providers.dart';
+import '../../../core/services/firebase_bootstrap.dart';
 import '../models/auth_access_state.dart';
 import '../models/auth_session.dart';
 import '../repository/auth_repository.dart';
@@ -23,8 +25,21 @@ Stream<User?> authUserChanges(Ref ref) {
 
 @riverpod
 Stream<AuthAccessState> authAccessState(Ref ref) async* {
-  final repository = ref.watch(authRepositoryProvider);
   yield const AuthAccessState.loading();
+  try {
+    await ensureFirebaseInitialized();
+  } catch (e) {
+    yield AuthAccessState.unauthorized(
+      reason: 'Falha ao inicializar Firebase. $e',
+    );
+    return;
+  }
+
+  final repository = AuthRepository(
+    auth: FirebaseAuth.instance,
+    db: FirebaseFirestore.instance,
+  );
+
   await for (final user in repository.authStateChanges()) {
     if (user == null) {
       yield const AuthAccessState.unauthenticated();

@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,6 +10,7 @@ class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
+  static String get _homePath => kIsWeb ? '/app' : '/';
 
   static const List<_NavItem> _items = [
     _NavItem(icon: Icons.home_outlined, label: 'Início', path: '/'),
@@ -61,12 +63,13 @@ class AppShell extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: List.generate(_items.length, (i) {
                       final item = _items[i];
+                      final path = i == 0 ? _homePath : item.path;
                       final selected = navigationShell.currentIndex == i;
                       return Expanded(
                         child: InkWell(
                           onTap: () {
                             if (navigationShell.currentIndex != i) {
-                              context.go(item.path);
+                              context.go(path);
                             }
                           },
                           borderRadius: BorderRadius.circular(

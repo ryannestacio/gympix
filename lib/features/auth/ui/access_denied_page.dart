@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../controllers/auth_controller.dart';
+import '../models/auth_access_state.dart';
 import '../providers/auth_providers.dart';
 import 'sign_out_confirmation_dialog.dart';
 
@@ -15,6 +17,12 @@ class AccessDeniedPage extends ConsumerWidget {
     final action = ref.watch(authControllerProvider);
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+
+    ref.listen(authAccessStateProvider, (previous, next) {
+      if (next.asData?.value.status == AuthAccessStatus.unauthenticated) {
+        context.go('/login');
+      }
+    });
 
     return Scaffold(
       body: SafeArea(

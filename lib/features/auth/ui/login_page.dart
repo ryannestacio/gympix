@@ -2,10 +2,13 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../controllers/auth_controller.dart';
+import '../models/auth_access_state.dart';
+import '../providers/auth_providers.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -70,9 +73,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final message = copied
         ? 'Nao foi possivel abrir o WhatsApp. Link copiado para a area de transferencia.'
         : 'Nao foi possivel abrir o WhatsApp no momento.';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<bool> _copyTextSafely(String text) async {
@@ -98,6 +101,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Falha no login: $message')));
+      }
+    });
+    ref.listen(authAccessStateProvider, (previous, next) {
+      final access = next.asData?.value;
+      if (access?.status == AuthAccessStatus.authorized) {
+        context.go(kIsWeb ? '/app' : '/');
       }
     });
 
