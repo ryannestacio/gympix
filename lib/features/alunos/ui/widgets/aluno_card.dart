@@ -703,6 +703,10 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
   Future<void> _onDuplicarCadastro() async {
     final alunos = ref.read(alunosHistoricoStreamProvider).value ?? const <Aluno>[];
     final seedMatricula = _calcularProximaMatricula(alunos);
+    final matriculasExistentes = alunos
+        .map((a) => a.matricula?.trim())
+        .whereType<String>()
+        .toList();
 
     final result = await AlunoFormSheet.show(
       context,
@@ -710,6 +714,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       initial: _draftFromAluno(),
       defaultMensalidade: widget.defaultMensalidade,
       seedMatricula: seedMatricula,
+      matriculasExistentes: matriculasExistentes,
     );
     if (result == null) return;
 

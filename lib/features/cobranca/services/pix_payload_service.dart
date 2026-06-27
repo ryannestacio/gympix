@@ -45,7 +45,7 @@ class PixPayloadService {
     required String merchantCity,
     String txid = 'GYMPIX',
   }) {
-    final sanitizedKey = pixKey.trim();
+    final sanitizedKey = _normalizePixKey(pixKey);
     if (sanitizedKey.isEmpty) {
       throw ArgumentError('A chave Pix nao pode estar vazia.');
     }
@@ -119,6 +119,45 @@ class PixPayloadService {
         .replaceAll(RegExp('[\\u00D9-\\u00DC\\u00F9-\\u00FC]'), 'U')
         .replaceAll(RegExp('[\\u00C7\\u00E7]'), 'C')
         .replaceAll(RegExp('[\\u00D1\\u00F1]'), 'N');
+  }
+
+  String _normalizePixKey(String pixKey) {
+    final trimmed = pixKey.trim();
+
+    if (trimmed.startsWith('000201')) {
+      return trimmed;
+    }
+
+    final digitsOnly = trimmed.replaceAll(RegExp(r'\D'), '');
+
+    // 1. CPF (11 dígitos) ou CNPJ (14 dígitos)
+    if (digitsOnly.length == 11 && !trimmed.contains('@')) {
+      final hasPhoneIndicators = trimmed.contains('(') || trimmed.contains(')') || trimmed.contains('+') || trimmed.startsWith('55');
+      final isProbablyPhone = hasPhoneIndicators || (digitsOnly[2] == '9' && !trimmed.contains('.'));
+
+      if (isProbablyPhone) {
+        return '+55$digitsOnly';
+      } else {
+        return digitsOnly; // CPF apenas números
+      }
+    }
+
+    if (digitsOnly.length == 14) {
+      return digitsOnly; // CNPJ apenas números
+    }
+
+    // 2. Celular com DDI (13 dígitos)
+    if (digitsOnly.length == 13 && digitsOnly.startsWith('55')) {
+      return '+$digitsOnly';
+    }
+
+    // Celular já com sinal de +
+    if (trimmed.startsWith('+55') && digitsOnly.length == 13) {
+      return trimmed;
+    }
+
+    // 3. Outros formatos (E-mail, EVP/Aleatória)
+    return trimmed;
   }
 
   String _crc16Ccitt(String payload) {

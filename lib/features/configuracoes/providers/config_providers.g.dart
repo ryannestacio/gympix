@@ -10,7 +10,7 @@ part of 'config_providers.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(configRepository)
-const configRepositoryProvider = ConfigRepositoryProvider._();
+final configRepositoryProvider = ConfigRepositoryProvider._();
 
 final class ConfigRepositoryProvider
     extends
@@ -20,7 +20,7 @@ final class ConfigRepositoryProvider
           ConfigRepository
         >
     with $Provider<ConfigRepository> {
-  const ConfigRepositoryProvider._()
+  ConfigRepositoryProvider._()
     : super(
         from: null,
         argument: null,
@@ -56,12 +56,12 @@ final class ConfigRepositoryProvider
 String _$configRepositoryHash() => r'6a48c7c5e81086c89911a66818b1e02558f2a26f';
 
 @ProviderFor(pixCodeStream)
-const pixCodeStreamProvider = PixCodeStreamProvider._();
+final pixCodeStreamProvider = PixCodeStreamProvider._();
 
 final class PixCodeStreamProvider
     extends $FunctionalProvider<AsyncValue<String?>, String?, Stream<String?>>
     with $FutureModifier<String?>, $StreamProvider<String?> {
-  const PixCodeStreamProvider._()
+  PixCodeStreamProvider._()
     : super(
         from: null,
         argument: null,
@@ -89,12 +89,12 @@ final class PixCodeStreamProvider
 String _$pixCodeStreamHash() => r'6820b04f6055791f6471653fd14ba5293393c8eb';
 
 @ProviderFor(defaultMensalidadeStream)
-const defaultMensalidadeStreamProvider = DefaultMensalidadeStreamProvider._();
+final defaultMensalidadeStreamProvider = DefaultMensalidadeStreamProvider._();
 
 final class DefaultMensalidadeStreamProvider
     extends $FunctionalProvider<AsyncValue<double?>, double?, Stream<double?>>
     with $FutureModifier<double?>, $StreamProvider<double?> {
-  const DefaultMensalidadeStreamProvider._()
+  DefaultMensalidadeStreamProvider._()
     : super(
         from: null,
         argument: null,
@@ -123,7 +123,7 @@ String _$defaultMensalidadeStreamHash() =>
     r'e80c46cf104f407cfbc4b42d1828e5039aac2d9f';
 
 @ProviderFor(cobrancaReguaConfigStream)
-const cobrancaReguaConfigStreamProvider = CobrancaReguaConfigStreamProvider._();
+final cobrancaReguaConfigStreamProvider = CobrancaReguaConfigStreamProvider._();
 
 final class CobrancaReguaConfigStreamProvider
     extends
@@ -135,7 +135,7 @@ final class CobrancaReguaConfigStreamProvider
     with
         $FutureModifier<CobrancaReguaConfig>,
         $StreamProvider<CobrancaReguaConfig> {
-  const CobrancaReguaConfigStreamProvider._()
+  CobrancaReguaConfigStreamProvider._()
     : super(
         from: null,
         argument: null,
@@ -165,7 +165,7 @@ String _$cobrancaReguaConfigStreamHash() =>
     r'b82b195e1958268f2b5a774e18cb051f2316137f';
 
 @ProviderFor(inadimplenciaConfigStream)
-const inadimplenciaConfigStreamProvider = InadimplenciaConfigStreamProvider._();
+final inadimplenciaConfigStreamProvider = InadimplenciaConfigStreamProvider._();
 
 final class InadimplenciaConfigStreamProvider
     extends
@@ -177,7 +177,7 @@ final class InadimplenciaConfigStreamProvider
     with
         $FutureModifier<InadimplenciaConfig>,
         $StreamProvider<InadimplenciaConfig> {
-  const InadimplenciaConfigStreamProvider._()
+  InadimplenciaConfigStreamProvider._()
     : super(
         from: null,
         argument: null,

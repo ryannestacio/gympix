@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gympix/features/alunos/ui/alunos_page.dart';
+import 'package:gympix/features/alunos/services/telefone_whatsapp_service.dart';
 
 void main() {
   group('normalizacao de telefone para WhatsApp', () {
@@ -19,6 +19,23 @@ void main() {
     test('rejeita formatos invalidos', () {
       expect(normalizarTelefoneWhatsApp('12345'), isNull);
       expect(normalizarTelefoneWhatsApp('4411987654321'), isNull);
+    });
+  });
+
+  group('montarUriWhatsApp', () {
+    test('retorna URI simples do WhatsApp', () {
+      expect(
+        montarUriWhatsApp('11987654321')?.toString(),
+        'https://wa.me/5511987654321',
+      );
+    });
+
+    test('retorna URI com mensagem formatada', () {
+      expect(
+        montarUriWhatsApp('11987654321', mensagem: 'Olá, tudo bem?')
+            ?.toString(),
+        'https://wa.me/5511987654321?text=Ol%C3%A1%2C%20tudo%20bem%3F',
+      );
     });
   });
 }

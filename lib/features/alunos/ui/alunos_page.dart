@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/firestore_error_formatter.dart';
 import '../../configuracoes/providers/config_providers.dart';
-import '../../relatorios/services/report_export_service.dart';
+import '../../relatorios/ui/widgets/report_export_sheet.dart';
 import '../controllers/alunos_actions_controller.dart';
 import '../models/aluno.dart';
 import '../providers/alunos_providers.dart';
@@ -95,8 +95,10 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
       final nome = aluno.nome.toLowerCase();
       final telefone = aluno.telefone.toLowerCase();
       final telefoneDigitos = _somenteDigitos(aluno.telefone);
+      final diaVencimentoStr = aluno.diaVencimento.toString();
       return nome.contains(busca) ||
           telefone.contains(busca) ||
+          diaVencimentoStr == busca ||
           (buscaDigitos.isNotEmpty && telefoneDigitos.contains(buscaDigitos));
     }).toList();
 
@@ -223,8 +225,7 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
               child: AlunosHeaderSection(
                 openingForm: _openingForm,
                 onNovoAluno: () => _onNovoAluno(defaultMensalidade),
-                onExportCsv: () => _exportarCsvAtual(context, alunos),
-                onExportPdf: () => _exportarPdfAtual(context, alunos),
+                onExportPdf: () => ReportExportSheet.show(context),
                 buscaController: _buscaController,
                 busca: _buscaAtiva,
                 onBuscaChanged: _onBuscaChanged,
@@ -374,6 +375,10 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
     setState(() => _openingForm = true);
     final alunos = ref.read(alunosHistoricoStreamProvider).value ?? const <Aluno>[];
     final seedMatricula = _calcularProximaMatricula(alunos);
+    final matriculasExistentes = alunos
+        .map((a) => a.matricula?.trim())
+        .whereType<String>()
+        .toList();
 
     final result = await AlunoFormSheet.show(
       context,
@@ -382,6 +387,7 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
       seedDiaVencimento: _ultimoDiaVencimento,
       seedMensalidade: _ultimaMensalidade,
       seedMatricula: seedMatricula,
+      matriculasExistentes: matriculasExistentes,
     );
     if (mounted) setState(() => _openingForm = false);
     if (result == null) return;
@@ -422,65 +428,9 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
     }
   }
 
-  Future<void> _exportarCsvAtual(
-    BuildContext context,
-    List<Aluno> alunos,
-  ) async {
-    if (alunos.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'N\u00e3o h\u00e1 alunos na vis\u00e3o atual para exportar.',
-          ),
-        ),
-      );
-      return;
-    }
-    try {
-      await ReportExportService().exportarCsvMensal(alunos);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('CSV da vis\u00e3o atual exportado com sucesso.'),
-        ),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(formatFirestoreError(e))));
-    }
-  }
 
-  Future<void> _exportarPdfAtual(
-    BuildContext context,
-    List<Aluno> alunos,
-  ) async {
-    if (alunos.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'N\u00e3o h\u00e1 alunos na vis\u00e3o atual para exportar.',
-          ),
-        ),
-      );
-      return;
-    }
-    try {
-      await ReportExportService().exportarPdfMensal(alunos);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('PDF da vis\u00e3o atual exportado com sucesso.'),
-        ),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(formatFirestoreError(e))));
-    }
-  }
+
+
 }
 
 /// Wrapper de animacao reutilizavel para cards da lista.

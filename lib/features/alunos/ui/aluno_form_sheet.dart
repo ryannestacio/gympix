@@ -36,6 +36,7 @@ class AlunoFormSheet extends StatefulWidget {
     this.seedDiaVencimento,
     this.seedMensalidade,
     this.seedMatricula,
+    this.matriculasExistentes = const [],
   });
 
   final String title;
@@ -44,6 +45,7 @@ class AlunoFormSheet extends StatefulWidget {
   final int? seedDiaVencimento;
   final double? seedMensalidade;
   final String? seedMatricula;
+  final List<String> matriculasExistentes;
 
   static Future<AlunoFormResult?> show(
     BuildContext context, {
@@ -53,6 +55,7 @@ class AlunoFormSheet extends StatefulWidget {
     int? seedDiaVencimento,
     double? seedMensalidade,
     String? seedMatricula,
+    List<String> matriculasExistentes = const [],
   }) {
     return showModalBottomSheet<AlunoFormResult>(
       context: context,
@@ -89,6 +92,7 @@ class AlunoFormSheet extends StatefulWidget {
                 seedDiaVencimento: seedDiaVencimento,
                 seedMensalidade: seedMensalidade,
                 seedMatricula: seedMatricula,
+                matriculasExistentes: matriculasExistentes,
               ),
             ),
           ),
@@ -179,6 +183,7 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _matricula,
+              enabled: widget.initial == null || widget.initial!.id.isEmpty,
               textInputAction: TextInputAction.next,
               keyboardType: TextInputType.text,
               textCapitalization: TextCapitalization.characters,
@@ -188,6 +193,11 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
               ),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Informe a matr\u00edcula';
+                final clean = v.trim();
+                final isNew = widget.initial == null || widget.initial!.id.isEmpty;
+                if (isNew && widget.matriculasExistentes.contains(clean)) {
+                  return 'Matr\u00edcula j\u00e1 est\u00e1 em uso';
+                }
                 return null;
               },
             ),

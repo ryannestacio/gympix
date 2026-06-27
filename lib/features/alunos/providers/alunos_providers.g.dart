@@ -10,7 +10,7 @@ part of 'alunos_providers.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(alunosRepository)
-const alunosRepositoryProvider = AlunosRepositoryProvider._();
+final alunosRepositoryProvider = AlunosRepositoryProvider._();
 
 final class AlunosRepositoryProvider
     extends
@@ -20,7 +20,7 @@ final class AlunosRepositoryProvider
           AlunosRepository
         >
     with $Provider<AlunosRepository> {
-  const AlunosRepositoryProvider._()
+  AlunosRepositoryProvider._()
     : super(
         from: null,
         argument: null,
@@ -56,7 +56,7 @@ final class AlunosRepositoryProvider
 String _$alunosRepositoryHash() => r'd24f8bb998c809391830e754212477e0cb773eb8';
 
 @ProviderFor(alunosStream)
-const alunosStreamProvider = AlunosStreamProvider._();
+final alunosStreamProvider = AlunosStreamProvider._();
 
 final class AlunosStreamProvider
     extends
@@ -66,7 +66,7 @@ final class AlunosStreamProvider
           Stream<List<Aluno>>
         >
     with $FutureModifier<List<Aluno>>, $StreamProvider<List<Aluno>> {
-  const AlunosStreamProvider._()
+  AlunosStreamProvider._()
     : super(
         from: null,
         argument: null,
@@ -95,11 +95,11 @@ final class AlunosStreamProvider
 String _$alunosStreamHash() => r'5d1f7a4f89fa7c5f11ee7d37517b1d178d79a809';
 
 @ProviderFor(AlunosPaginados)
-const alunosPaginadosProvider = AlunosPaginadosFamily._();
+final alunosPaginadosProvider = AlunosPaginadosFamily._();
 
 final class AlunosPaginadosProvider
     extends $NotifierProvider<AlunosPaginados, AsyncValue<List<Aluno>>> {
-  const AlunosPaginadosProvider._({
+  AlunosPaginadosProvider._({
     required AlunosPaginadosFamily super.from,
     required bool super.argument,
   }) : super(
@@ -143,7 +143,7 @@ final class AlunosPaginadosProvider
   }
 }
 
-String _$alunosPaginadosHash() => r'e4e6fb150bca7f4d7bff9095d8a365d95aafb60f';
+String _$alunosPaginadosHash() => r'27dadeab96d74634b2051b192ce2769746f94f18';
 
 final class AlunosPaginadosFamily extends $Family
     with
@@ -154,7 +154,7 @@ final class AlunosPaginadosFamily extends $Family
           AsyncValue<List<Aluno>>,
           bool
         > {
-  const AlunosPaginadosFamily._()
+  AlunosPaginadosFamily._()
     : super(
         retry: null,
         name: r'alunosPaginadosProvider',
@@ -177,8 +177,7 @@ abstract class _$AlunosPaginados extends $Notifier<AsyncValue<List<Aluno>>> {
   AsyncValue<List<Aluno>> build({bool onlyActive = true});
   @$mustCallSuper
   @override
-  void runBuild() {
-    final created = build(onlyActive: _$args);
+  WhenComplete runBuild() {
     final ref =
         this.ref as $Ref<AsyncValue<List<Aluno>>, AsyncValue<List<Aluno>>>;
     final element =
@@ -189,16 +188,16 @@ abstract class _$AlunosPaginados extends $Notifier<AsyncValue<List<Aluno>>> {
               Object?,
               Object?
             >;
-    element.handleValue(ref, created);
+    return element.handleCreate(ref, () => build(onlyActive: _$args));
   }
 }
 
 @ProviderFor(AlunosFiltro)
-const alunosFiltroProvider = AlunosFiltroProvider._();
+final alunosFiltroProvider = AlunosFiltroProvider._();
 
 final class AlunosFiltroProvider
     extends $NotifierProvider<AlunosFiltro, AlunoFiltro> {
-  const AlunosFiltroProvider._()
+  AlunosFiltroProvider._()
     : super(
         from: null,
         argument: null,
@@ -231,8 +230,7 @@ abstract class _$AlunosFiltro extends $Notifier<AlunoFiltro> {
   AlunoFiltro build();
   @$mustCallSuper
   @override
-  void runBuild() {
-    final created = build();
+  WhenComplete runBuild() {
     final ref = this.ref as $Ref<AlunoFiltro, AlunoFiltro>;
     final element =
         ref.element
@@ -242,17 +240,17 @@ abstract class _$AlunosFiltro extends $Notifier<AlunoFiltro> {
               Object?,
               Object?
             >;
-    element.handleValue(ref, created);
+    return element.handleCreate(ref, build);
   }
 }
 
 @ProviderFor(alunosFiltrados)
-const alunosFiltradosProvider = AlunosFiltradosProvider._();
+final alunosFiltradosProvider = AlunosFiltradosProvider._();
 
 final class AlunosFiltradosProvider
     extends $FunctionalProvider<List<Aluno>, List<Aluno>, List<Aluno>>
     with $Provider<List<Aluno>> {
-  const AlunosFiltradosProvider._()
+  AlunosFiltradosProvider._()
     : super(
         from: null,
         argument: null,
@@ -285,15 +283,15 @@ final class AlunosFiltradosProvider
   }
 }
 
-String _$alunosFiltradosHash() => r'42c56820afba351c007fa2d421a41ef4f1cb24b8';
+String _$alunosFiltradosHash() => r'e9f7626398101fc24f9104d97f5ba9a1007d6378';
 
 @ProviderFor(dashboardStats)
-const dashboardStatsProvider = DashboardStatsProvider._();
+final dashboardStatsProvider = DashboardStatsProvider._();
 
 final class DashboardStatsProvider
     extends $FunctionalProvider<DashboardStats, DashboardStats, DashboardStats>
     with $Provider<DashboardStats> {
-  const DashboardStatsProvider._()
+  DashboardStatsProvider._()
     : super(
         from: null,
         argument: null,

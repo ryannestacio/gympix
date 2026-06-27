@@ -19,7 +19,7 @@ class VencimentoHojeNotificationService {
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         iOS: DarwinInitializationSettings(),
       );
-      await _plugin.initialize(settings);
+      await _plugin.initialize(settings: settings);
       await _requestPermissions();
       _initialized = true;
     } on MissingPluginException {
@@ -40,10 +40,10 @@ class VencimentoHojeNotificationService {
       await _init();
       if (!_initialized) return;
       await _plugin.show(
-        dateKey.hashCode,
-        'Vencimentos de hoje',
-        'Hoje terá o vencimento de $totalAlunos alunos',
-        const NotificationDetails(
+        id: dateKey.hashCode,
+        title: 'Vencimentos de hoje',
+        body: 'Hoje terá o vencimento de $totalAlunos alunos',
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'vencimentos_hoje',
             'Vencimentos do dia',

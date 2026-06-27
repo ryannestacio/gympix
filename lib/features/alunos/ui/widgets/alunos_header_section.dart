@@ -11,7 +11,6 @@ class AlunosHeaderSection extends StatelessWidget {
     super.key,
     required this.openingForm,
     required this.onNovoAluno,
-    required this.onExportCsv,
     required this.onExportPdf,
     required this.buscaController,
     required this.busca,
@@ -28,7 +27,6 @@ class AlunosHeaderSection extends StatelessWidget {
 
   final bool openingForm;
   final VoidCallback onNovoAluno;
-  final VoidCallback onExportCsv;
   final VoidCallback onExportPdf;
   final TextEditingController buscaController;
   final String busca;
@@ -67,34 +65,8 @@ class AlunosHeaderSection extends StatelessWidget {
                   ),
                 ),
               ),
-              PopupMenuButton<String>(
-                tooltip: 'Exportar vis\u00e3o atual',
-                onSelected: (value) {
-                  if (value == 'csv') onExportCsv();
-                  if (value == 'pdf') onExportPdf();
-                },
-                itemBuilder: (context) => const [
-                  PopupMenuItem(
-                    value: 'csv',
-                    child: Row(
-                      children: [
-                        Icon(Icons.table_chart_outlined, size: 18),
-                        SizedBox(width: 10),
-                        Text('Exportar CSV'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'pdf',
-                    child: Row(
-                      children: [
-                        Icon(Icons.picture_as_pdf_outlined, size: 18),
-                        SizedBox(width: 10),
-                        Text('Exportar PDF'),
-                      ],
-                    ),
-                  ),
-                ],
+              GestureDetector(
+                onTap: onExportPdf,
                 child: Container(
                   margin: const EdgeInsets.only(right: 10),
                   padding: const EdgeInsets.all(12),
@@ -104,7 +76,7 @@ class AlunosHeaderSection extends StatelessWidget {
                     border: Border.all(color: scheme.outline),
                   ),
                   child: Icon(
-                    Icons.ios_share_rounded,
+                    Icons.picture_as_pdf_outlined,
                     size: 18,
                     color: scheme.primary,
                   ),

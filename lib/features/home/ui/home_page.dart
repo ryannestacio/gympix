@@ -11,7 +11,7 @@ import '../../alunos/models/aluno.dart';
 import '../../alunos/providers/alunos_providers.dart';
 import '../../relatorios/models/competencia_report.dart';
 import '../../relatorios/providers/competencia_report_providers.dart';
-import '../../relatorios/services/report_export_service.dart';
+import '../../relatorios/ui/widgets/report_export_sheet.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -294,17 +294,10 @@ class HomePage extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppTheme.spacingXs + 2),
                     _ActionTile(
-                      icon: Icons.file_download_outlined,
-                      title: 'Exportar CSV mensal',
-                      subtitle: 'Baixar e compartilhar relatório financeiro',
-                      onTap: () => _exportCsv(context, report),
-                    ),
-                    const SizedBox(height: AppTheme.spacingXs + 2),
-                    _ActionTile(
                       icon: Icons.picture_as_pdf_outlined,
                       title: 'Exportar PDF mensal',
-                      subtitle: 'Resumo da competência selecionada',
-                      onTap: () => _exportPdf(context, report),
+                      subtitle: 'Painel com opções e relatórios financeiros',
+                      onTap: () => ReportExportSheet.show(context),
                     ),
                     const SizedBox(height: AppTheme.spacingXs + 2),
                     _ActionTile(
@@ -324,41 +317,9 @@ class HomePage extends ConsumerWidget {
     );
   }
 
-  Future<void> _exportCsv(
-    BuildContext context,
-    CompetenciaReportData report,
-  ) async {
-    try {
-      await ReportExportService().exportarCsvCompetencia(report);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('CSV exportado com sucesso.')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(formatFirestoreError(e))));
-    }
-  }
 
-  Future<void> _exportPdf(
-    BuildContext context,
-    CompetenciaReportData report,
-  ) async {
-    try {
-      await ReportExportService().exportarPdfCompetencia(report);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PDF exportado com sucesso.')),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(formatFirestoreError(e))));
-    }
-  }
+
+
 
   String _formatMoney(double value) {
     return _currencyFormatter.format(value);

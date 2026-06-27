@@ -19,7 +19,7 @@ class CobrancaNotificationService {
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         iOS: DarwinInitializationSettings(),
       );
-      await _plugin.initialize(settings);
+      await _plugin.initialize(settings: settings);
       _initialized = true;
     } on MissingPluginException {
       // Ambiente sem plugin disponível (tests/web/desktop sem implementação).
@@ -39,10 +39,10 @@ class CobrancaNotificationService {
       await init();
       if (!_initialized) return;
       await _plugin.show(
-        idempotencyKey.hashCode,
-        title,
-        body,
-        const NotificationDetails(
+        id: idempotencyKey.hashCode,
+        title: title,
+        body: body,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'cobranca_automatica',
             'Cobranca automatica',

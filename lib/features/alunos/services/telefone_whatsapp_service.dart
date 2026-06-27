@@ -17,9 +17,13 @@ bool temTelefoneWhatsAppValido(String telefone) {
   return normalizarTelefoneWhatsApp(telefone) != null;
 }
 
-Uri? montarUriWhatsApp(String telefone) {
+Uri? montarUriWhatsApp(String telefone, {String? mensagem}) {
   final normalizado = normalizarTelefoneWhatsApp(telefone);
   if (normalizado == null) return null;
+  if (mensagem != null && mensagem.isNotEmpty) {
+    final encoded = Uri.encodeComponent(mensagem);
+    return Uri.parse('https://wa.me/$normalizado?text=$encoded');
+  }
   return Uri.parse('https://wa.me/$normalizado');
 }
 

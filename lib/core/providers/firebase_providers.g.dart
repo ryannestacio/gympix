@@ -10,7 +10,7 @@ part of 'firebase_providers.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(firestore)
-const firestoreProvider = FirestoreProvider._();
+final firestoreProvider = FirestoreProvider._();
 
 final class FirestoreProvider
     extends
@@ -20,7 +20,7 @@ final class FirestoreProvider
           FirebaseFirestore
         >
     with $Provider<FirebaseFirestore> {
-  const FirestoreProvider._()
+  FirestoreProvider._()
     : super(
         from: null,
         argument: null,
@@ -57,12 +57,12 @@ final class FirestoreProvider
 String _$firestoreHash() => r'597b1a9eb96f2fae51f5b578f4b5debe4f6d30c6';
 
 @ProviderFor(firebaseAuth)
-const firebaseAuthProvider = FirebaseAuthProvider._();
+final firebaseAuthProvider = FirebaseAuthProvider._();
 
 final class FirebaseAuthProvider
     extends $FunctionalProvider<FirebaseAuth, FirebaseAuth, FirebaseAuth>
     with $Provider<FirebaseAuth> {
-  const FirebaseAuthProvider._()
+  FirebaseAuthProvider._()
     : super(
         from: null,
         argument: null,

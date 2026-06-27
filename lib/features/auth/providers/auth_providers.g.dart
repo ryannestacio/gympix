@@ -10,12 +10,12 @@ part of 'auth_providers.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(authRepository)
-const authRepositoryProvider = AuthRepositoryProvider._();
+final authRepositoryProvider = AuthRepositoryProvider._();
 
 final class AuthRepositoryProvider
     extends $FunctionalProvider<AuthRepository, AuthRepository, AuthRepository>
     with $Provider<AuthRepository> {
-  const AuthRepositoryProvider._()
+  AuthRepositoryProvider._()
     : super(
         from: null,
         argument: null,
@@ -51,12 +51,12 @@ final class AuthRepositoryProvider
 String _$authRepositoryHash() => r'9f97e644bdc6bf6dd2d0b234710028ac9e3012c5';
 
 @ProviderFor(authUserChanges)
-const authUserChangesProvider = AuthUserChangesProvider._();
+final authUserChangesProvider = AuthUserChangesProvider._();
 
 final class AuthUserChangesProvider
     extends $FunctionalProvider<AsyncValue<User?>, User?, Stream<User?>>
     with $FutureModifier<User?>, $StreamProvider<User?> {
-  const AuthUserChangesProvider._()
+  AuthUserChangesProvider._()
     : super(
         from: null,
         argument: null,
@@ -84,7 +84,7 @@ final class AuthUserChangesProvider
 String _$authUserChangesHash() => r'3589daf9f7d77eefbf8901e35f13b18f6ea6455b';
 
 @ProviderFor(authAccessState)
-const authAccessStateProvider = AuthAccessStateProvider._();
+final authAccessStateProvider = AuthAccessStateProvider._();
 
 final class AuthAccessStateProvider
     extends
@@ -94,7 +94,7 @@ final class AuthAccessStateProvider
           Stream<AuthAccessState>
         >
     with $FutureModifier<AuthAccessState>, $StreamProvider<AuthAccessState> {
-  const AuthAccessStateProvider._()
+  AuthAccessStateProvider._()
     : super(
         from: null,
         argument: null,
@@ -120,15 +120,15 @@ final class AuthAccessStateProvider
   }
 }
 
-String _$authAccessStateHash() => r'a8e47f025349a5c1f6edfe32ee8133ac2bf272cc';
+String _$authAccessStateHash() => r'b1c15907a381f87c354f48da9bad68b431057d72';
 
 @ProviderFor(authSession)
-const authSessionProvider = AuthSessionProvider._();
+final authSessionProvider = AuthSessionProvider._();
 
 final class AuthSessionProvider
     extends $FunctionalProvider<AuthSession?, AuthSession?, AuthSession?>
     with $Provider<AuthSession?> {
-  const AuthSessionProvider._()
+  AuthSessionProvider._()
     : super(
         from: null,
         argument: null,
@@ -164,13 +164,13 @@ final class AuthSessionProvider
 String _$authSessionHash() => r'b44de13393536bb4657add13c83fc6f333bb646d';
 
 @ProviderFor(authAccessSnapshot)
-const authAccessSnapshotProvider = AuthAccessSnapshotProvider._();
+final authAccessSnapshotProvider = AuthAccessSnapshotProvider._();
 
 final class AuthAccessSnapshotProvider
     extends
         $FunctionalProvider<AuthAccessState, AuthAccessState, AuthAccessState>
     with $Provider<AuthAccessState> {
-  const AuthAccessSnapshotProvider._()
+  AuthAccessSnapshotProvider._()
     : super(
         from: null,
         argument: null,
