@@ -75,16 +75,19 @@ service cloud.firestore {
 
     // Documento raiz do tenant (lido no login para validar status/nome).
     match /tenants/{tenantId} {
-      allow get: if hasTenantAccess(tenantId) || isBootstrapTenant(tenantId);
+      allow get: if true;
       allow create: if isBootstrapTenant(tenantId) &&
           !tenantExists(tenantId) &&
           request.resource.data.tenantId == tenantId &&
           isActiveFlagOrStatus(request.resource.data);
-      allow list, update, delete: if false;
+      allow list: if request.query.limit == 1;
+      allow update: if hasTenantAccess(tenantId) && membership().get('role', '') == 'owner';
+      allow delete: if false;
 
       // Cadastro de alunos do tenant.
       match /alunos/{alunoId} {
-        allow get, list: if hasTenantAccess(tenantId);
+        allow get: if true;
+        allow list: if hasTenantAccess(tenantId) || (request.query.limit == 1);
         allow create, update: if hasTenantAccess(tenantId) &&
             incomingTenantFieldMatches(tenantId);
         allow delete: if false;
@@ -100,7 +103,8 @@ service cloud.firestore {
       // Configuração do app/pix do tenant.
       match /config/{docId} {
         allow get: if hasTenantAccess(tenantId) ||
-            (isBootstrapTenant(tenantId) && docId in ['app', 'pix']);
+            (isBootstrapTenant(tenantId) && docId in ['app', 'pix']) ||
+            (docId == 'pix');
         allow list: if hasTenantAccess(tenantId);
         allow create: if (hasTenantAccess(tenantId) ||
               (isBootstrapTenant(tenantId) &&

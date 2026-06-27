@@ -114,6 +114,7 @@ class AlunosRepository {
     required double mensalidade,
     required bool pago,
     String? matricula,
+    String? senha,
   }) {
     final competencia = Aluno.competenciaAtual();
     final now = DateTime.now();
@@ -143,6 +144,7 @@ class AlunosRepository {
       pagamentos: {competencia: pagamentoInicial},
       pagoLegado: null,
       matricula: matricula?.trim().isEmpty == true ? null : matricula?.trim(),
+      senha: senha,
     );
 
     final payload = {

@@ -205,3 +205,69 @@ final class InadimplenciaConfigStreamProvider
 
 String _$inadimplenciaConfigStreamHash() =>
     r'cd73eb30ae7e83932aa34238621590712bab3df0';
+
+@ProviderFor(tenantSlugStream)
+final tenantSlugStreamProvider = TenantSlugStreamProvider._();
+
+final class TenantSlugStreamProvider
+    extends $FunctionalProvider<AsyncValue<String?>, String?, Stream<String?>>
+    with $FutureModifier<String?>, $StreamProvider<String?> {
+  TenantSlugStreamProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'tenantSlugStreamProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$tenantSlugStreamHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<String?> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<String?> create(Ref ref) {
+    return tenantSlugStream(ref);
+  }
+}
+
+String _$tenantSlugStreamHash() => r'694e7340c5e41e5f1a174e041ccd41a91e4c747e';
+
+@ProviderFor(tenantNameStream)
+final tenantNameStreamProvider = TenantNameStreamProvider._();
+
+final class TenantNameStreamProvider
+    extends $FunctionalProvider<AsyncValue<String?>, String?, Stream<String?>>
+    with $FutureModifier<String?>, $StreamProvider<String?> {
+  TenantNameStreamProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'tenantNameStreamProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$tenantNameStreamHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<String?> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<String?> create(Ref ref) {
+    return tenantNameStream(ref);
+  }
+}
+
+String _$tenantNameStreamHash() => r'cf649df158ff0f01eeccfcd1577bb7519c3755f9';

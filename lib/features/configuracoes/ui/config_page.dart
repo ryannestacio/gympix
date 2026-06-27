@@ -135,6 +135,22 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
             ),
             const SizedBox(height: AppTheme.spacingLg),
             const _SectionHeader(
+              title: 'Portal do Aluno',
+              subtitle: 'Configurações de identidade e link do aluno',
+              icon: Icons.launch_rounded,
+            ),
+            const SizedBox(height: AppTheme.spacingSm),
+            _PortalSlugCard(
+              slugAsync: ref.watch(tenantSlugStreamProvider),
+              onTap: _openPortalSlugSheet,
+            ),
+            const SizedBox(height: AppTheme.spacingSm),
+            _PortalGymNameCard(
+              nameAsync: ref.watch(tenantNameStreamProvider),
+              onTap: _openPortalGymNameSheet,
+            ),
+            const SizedBox(height: AppTheme.spacingLg),
+            const _SectionHeader(
               title: 'Sistema',
               subtitle: 'Sess\u00e3o e informa\u00e7\u00f5es do app',
               icon: Icons.info_outline_rounded,
@@ -597,6 +613,319 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
       return false;
     }
   }
+
+  Future<void> _openPortalSlugSheet() async {
+    final currentSlug = ref.read(tenantSlugStreamProvider).value ?? '';
+    final slugController = TextEditingController(text: currentSlug);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        var saving = false;
+        String? errorMessage;
+        final formKey = GlobalKey<FormState>();
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final theme = Theme.of(context);
+            final scheme = theme.colorScheme;
+
+            Future<void> submit() async {
+              if (!formKey.currentState!.validate()) return;
+              if (saving) return;
+
+              setModalState(() {
+                saving = true;
+                errorMessage = null;
+              });
+
+              try {
+                final repo = ref.read(configRepositoryProvider);
+                await repo.setTenantSlug(slugController.text.trim());
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Código de acesso do portal atualizado!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  setModalState(() {
+                    errorMessage = e.toString().replaceFirst('Exception: ', '').replaceFirst('StateError: ', '');
+                    saving = false;
+                  });
+                }
+              }
+            }
+
+            final slugText = slugController.text.trim();
+            final generatedLink = slugText.isNotEmpty
+                ? 'https://gympix.web.app/portal?tenant=$slugText'
+                : '';
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppTheme.spacingLg,
+                AppTheme.spacingSm,
+                AppTheme.spacingLg,
+                AppTheme.spacingLg + MediaQuery.of(sheetContext).viewInsets.bottom,
+              ),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Portal do Aluno',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Defina um código curto e amigável (como o @ de uma rede social) para identificar sua academia no link do aluno.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.spacingMd),
+                    TextFormField(
+                      controller: slugController,
+                      autofocus: true,
+                      keyboardType: TextInputType.text,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => submit(),
+                      onChanged: (_) {
+                        setModalState(() {});
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Código da Academia',
+                        prefixText: '@ ',
+                        hintText: 'ex: academiabemestar',
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Informe o código da academia.';
+                        }
+                        final clean = v.trim();
+                        if (!RegExp(r'^[a-zA-Z0-9_-]+$').hasMatch(clean)) {
+                          return 'Use apenas letras, números, - e _.';
+                        }
+                        return null;
+                      },
+                    ),
+                    if (generatedLink.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                          border: Border.all(color: scheme.outline.withValues(alpha: 0.12)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Link gerado:',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    generatedLink,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: scheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton.filledTonal(
+                              tooltip: 'Copiar link',
+                              icon: const Icon(Icons.copy_rounded, size: 18),
+                              onPressed: () async {
+                                await Clipboard.setData(ClipboardData(text: generatedLink));
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Link copiado!')),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        errorMessage!,
+                        style: TextStyle(color: scheme.error, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                    const SizedBox(height: AppTheme.spacingLg),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: saving ? null : submit,
+                        icon: saving
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.save_rounded),
+                        label: Text(saving ? 'Salvando...' : 'Salvar Código'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _openPortalGymNameSheet() async {
+    final currentName = ref.read(tenantNameStreamProvider).value ?? '';
+    final nameController = TextEditingController(text: currentName);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        var saving = false;
+        String? errorMessage;
+        final formKey = GlobalKey<FormState>();
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final theme = Theme.of(context);
+            final scheme = theme.colorScheme;
+
+            Future<void> submit() async {
+              if (!formKey.currentState!.validate()) return;
+              if (saving) return;
+
+              setModalState(() {
+                saving = true;
+                errorMessage = null;
+              });
+
+              try {
+                final repo = ref.read(configRepositoryProvider);
+                await repo.setTenantName(nameController.text.trim());
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Nome da academia atualizado!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  setModalState(() {
+                    errorMessage = e.toString().replaceFirst('Exception: ', '').replaceFirst('StateError: ', '');
+                    saving = false;
+                  });
+                }
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppTheme.spacingLg,
+                AppTheme.spacingSm,
+                AppTheme.spacingLg,
+                AppTheme.spacingLg + MediaQuery.of(sheetContext).viewInsets.bottom,
+              ),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Nome da Academia',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Defina o nome de exibição oficial da sua academia no portal do aluno e nos documentos.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppTheme.spacingMd),
+                    TextFormField(
+                      controller: nameController,
+                      autofocus: true,
+                      keyboardType: TextInputType.text,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => submit(),
+                      decoration: const InputDecoration(
+                        labelText: 'Nome da Academia',
+                        hintText: 'ex: Academia Bem Estar',
+                      ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Informe o nome da academia.';
+                        }
+                        return null;
+                      },
+                    ),
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        errorMessage!,
+                        style: theme.textTheme.bodySmall?.copyWith(color: scheme.error),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    FilledButton(
+                      onPressed: saving ? null : submit,
+                      child: saving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                            )
+                          : const Text('Salvar Nome'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
 class _SettingsHeroCard extends StatelessWidget {
@@ -936,6 +1265,213 @@ class _PaymentOptionCard extends StatelessWidget {
                         subtitle,
                         style: textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacingSm),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: scheme.onSurfaceVariant,
+                  size: 24,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PortalSlugCard extends StatelessWidget {
+  const _PortalSlugCard({
+    required this.slugAsync,
+    required this.onTap,
+  });
+
+  final AsyncValue<String?> slugAsync;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.26 : 0.06),
+            blurRadius: isDark ? 14 : 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          child: Padding(
+            padding: const EdgeInsets.all(AppTheme.spacingMd),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.spacingXs),
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  ),
+                  child: Icon(Icons.link_rounded, size: 20, color: scheme.primary),
+                ),
+                const SizedBox(width: AppTheme.spacingSm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Link do Portal do Aluno',
+                        style: textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      slugAsync.when(
+                        data: (slug) {
+                          if (slug == null || slug.trim().isEmpty) {
+                            return Text(
+                              'Crie um código de acesso para gerar o link do portal.',
+                              style: textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            );
+                          }
+                          return Text(
+                            'Código ativo: @$slug\nLink: gympix.web.app/portal?tenant=$slug',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          );
+                        },
+                        loading: () => const SizedBox(
+                          height: 14,
+                          width: 14,
+                          child: CircularProgressIndicator(strokeWidth: 1.5),
+                        ),
+                        error: (err, _) => Text(
+                          'Erro ao carregar link.',
+                          style: textTheme.bodySmall?.copyWith(color: scheme.error),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppTheme.spacingSm),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: scheme.onSurfaceVariant,
+                  size: 24,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PortalGymNameCard extends StatelessWidget {
+  const _PortalGymNameCard({
+    required this.nameAsync,
+    required this.onTap,
+  });
+
+  final AsyncValue<String?> nameAsync;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.26 : 0.06),
+            blurRadius: isDark ? 14 : 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          child: Padding(
+            padding: const EdgeInsets.all(AppTheme.spacingMd),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.spacingXs),
+                  decoration: BoxDecoration(
+                    color: scheme.primaryContainer.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  ),
+                  child: Icon(Icons.business_rounded, size: 20, color: scheme.primary),
+                ),
+                const SizedBox(width: AppTheme.spacingSm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Nome da Academia',
+                        style: textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      nameAsync.when(
+                        data: (name) {
+                          if (name == null || name.trim().isEmpty) {
+                            return Text(
+                              'Toque para configurar o nome da academia.',
+                              style: textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            );
+                          }
+                          return Text(
+                            name,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          );
+                        },
+                        loading: () => const SizedBox(
+                          height: 14,
+                          width: 14,
+                          child: CircularProgressIndicator(strokeWidth: 1.5),
+                        ),
+                        error: (err, _) => Text(
+                          'Erro ao carregar nome.',
+                          style: textTheme.bodySmall?.copyWith(color: scheme.error),
                         ),
                       ),
                     ],

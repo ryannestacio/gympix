@@ -36,3 +36,13 @@ Stream<CobrancaReguaConfig> cobrancaReguaConfigStream(Ref ref) {
 Stream<InadimplenciaConfig> inadimplenciaConfigStream(Ref ref) {
   return ref.watch(configRepositoryProvider).watchInadimplenciaConfig();
 }
+
+@riverpod
+Stream<String?> tenantSlugStream(Ref ref) {
+  return ref.watch(configRepositoryProvider).watchTenantSlug();
+}
+
+@riverpod
+Stream<String?> tenantNameStream(Ref ref) {
+  return ref.watch(configRepositoryProvider).watchTenantName();
+}

@@ -97,6 +97,8 @@ class Aluno {
     this.arquivadoEm,
     this.pagoLegado,
     this.matricula,
+    this.senha,
+    this.tenantId,
     this.hasPendingWrites = false,
   });
 
@@ -112,6 +114,8 @@ class Aluno {
   final DateTime? arquivadoEm;
   final bool? pagoLegado;
   final String? matricula;
+  final String? senha;
+  final String? tenantId;
   final bool hasPendingWrites;
 
   static String competenciaAtual([DateTime? now]) {
@@ -323,6 +327,8 @@ class Aluno {
     DateTime? arquivadoEm,
     bool? pagoLegado,
     String? matricula,
+    String? senha,
+    String? tenantId,
     bool? hasPendingWrites,
   }) {
     return Aluno(
@@ -338,6 +344,8 @@ class Aluno {
       arquivadoEm: arquivadoEm ?? this.arquivadoEm,
       pagoLegado: pagoLegado ?? this.pagoLegado,
       matricula: matricula ?? this.matricula,
+      senha: senha ?? this.senha,
+      tenantId: tenantId ?? this.tenantId,
       hasPendingWrites: hasPendingWrites ?? this.hasPendingWrites,
     );
   }
@@ -358,6 +366,8 @@ class Aluno {
         other.arquivadoEm != arquivadoEm ||
         other.pagoLegado != pagoLegado ||
         other.matricula != matricula ||
+        other.senha != senha ||
+        other.tenantId != tenantId ||
         other.hasPendingWrites != hasPendingWrites) {
       return false;
     }
@@ -384,6 +394,8 @@ class Aluno {
       arquivadoEm.hashCode ^
       pagoLegado.hashCode ^
       matricula.hashCode ^
+      senha.hashCode ^
+      tenantId.hashCode ^
       hasPendingWrites.hashCode;
 
   /// Calcula o status de inadimplencia deste aluno usando as configuracoes padrao.

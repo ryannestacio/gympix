@@ -404,6 +404,7 @@ class _AlunosPageState extends ConsumerState<AlunosPage> {
               mensalidade: result.mensalidade,
               pago: result.pago,
               matricula: result.matricula,
+              senha: result.senha,
             ),
           );
       _ultimoDiaVencimento = result.diaVencimento;

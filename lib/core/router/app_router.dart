@@ -13,6 +13,8 @@ import '../../features/cobranca/ui/cobranca_page.dart';
 import '../../features/configuracoes/ui/config_page.dart';
 import '../../features/home/ui/home_page.dart';
 import '../../features/home/ui/web_landing_page.dart';
+import '../../features/portal_aluno/ui/portal_login_page.dart';
+import '../../features/portal_aluno/ui/portal_painel_page.dart';
 import 'app_shell.dart';
 
 part 'app_router.g.dart';
@@ -30,7 +32,8 @@ GoRouter appRouter(Ref ref) {
       final isLogin = location == '/login';
       final isDenied = location == '/access-denied';
       final isPublicCobranca = location == '/cobranca';
-      final isPublicRoute = isPublicCobranca || isWebLanding;
+      final isPortal = location.startsWith('/portal');
+      final isPublicRoute = isPublicCobranca || isWebLanding || isPortal;
 
       if (isPublicRoute) return null;
 
@@ -115,6 +118,18 @@ GoRouter appRouter(Ref ref) {
           final valor = state.uri.queryParameters['valor'] ?? '';
           return CobrancaPage(nome: nome, pixCode: pix, valor: valor);
         },
+      ),
+      GoRoute(
+        path: '/portal',
+        builder: (context, state) {
+          final seedMatricula = state.uri.queryParameters['matricula'];
+          final tenantId = state.uri.queryParameters['tenant'];
+          return PortalLoginPage(initialMatricula: seedMatricula, tenantId: tenantId);
+        },
+      ),
+      GoRoute(
+        path: '/portal/painel',
+        builder: (context, state) => const PortalPainelPage(),
       ),
     ],
     errorBuilder: (context, state) => _RouterErrorPage(error: state.error),

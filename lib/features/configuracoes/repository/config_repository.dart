@@ -45,6 +45,63 @@ class ConfigRepository {
     );
   }
 
+  Stream<String?> watchTenantSlug() {
+    return _db.collection('tenants').doc(_tenantId).snapshots().map((doc) {
+      final data = doc.data();
+      final slug = data?['slug'];
+      if (slug is String && slug.trim().isNotEmpty) return slug.trim();
+      return null;
+    });
+  }
+
+  Future<void> setTenantSlug(String slug) async {
+    final cleanedSlug = slug.trim().replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '').toLowerCase();
+    if (cleanedSlug.isEmpty) {
+      throw ArgumentError('O código da academia não pode ser vazio.');
+    }
+
+    // Verifica se já existe outra academia com o mesmo slug
+    final existing = await _db
+        .collection('tenants')
+        .where('slug', isEqualTo: cleanedSlug)
+        .limit(1)
+        .get();
+
+    if (existing.docs.isNotEmpty && existing.docs.first.id != _tenantId) {
+      throw StateError('Este código já está em uso por outra academia.');
+    }
+
+    await _retryPolicy.execute(() async {
+      await _db.collection('tenants').doc(_tenantId).update({
+        'slug': cleanedSlug,
+        FirestoreFields.updatedAt: FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  Stream<String?> watchTenantName() {
+    return _db.collection('tenants').doc(_tenantId).snapshots().map((doc) {
+      final data = doc.data();
+      final name = data?['nome'];
+      if (name is String && name.trim().isNotEmpty) return name.trim();
+      return null;
+    });
+  }
+
+  Future<void> setTenantName(String nome) async {
+    final cleanedName = nome.trim();
+    if (cleanedName.isEmpty) {
+      throw ArgumentError('O nome da academia não pode ser vazio.');
+    }
+
+    await _retryPolicy.execute(() async {
+      await _db.collection('tenants').doc(_tenantId).update({
+        'nome': cleanedName,
+        FirestoreFields.updatedAt: FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
   Stream<double?> watchDefaultMensalidade() {
     return _appDoc.snapshots().map((doc) {
       final data = doc.data();

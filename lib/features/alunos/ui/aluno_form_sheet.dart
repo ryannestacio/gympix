@@ -16,6 +16,7 @@ class AlunoFormResult {
     required this.mensalidade,
     required this.pago,
     this.matricula,
+    this.senha,
   });
 
   final String nome;
@@ -25,6 +26,7 @@ class AlunoFormResult {
   final double mensalidade;
   final bool pago;
   final String? matricula;
+  final String? senha;
 }
 
 class AlunoFormSheet extends StatefulWidget {
@@ -124,6 +126,9 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
   late final _matricula = TextEditingController(
     text: widget.initial?.matricula ?? widget.seedMatricula ?? '',
   );
+  late final _senha = TextEditingController(
+    text: widget.initial?.senha ?? '',
+  );
 
   bool _pago = false;
 
@@ -150,6 +155,7 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
     _dia.dispose();
     _mensalidade.dispose();
     _matricula.dispose();
+    _senha.dispose();
     super.dispose();
   }
 
@@ -233,6 +239,15 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
             ),
             const SizedBox(height: 12),
             TextFormField(
+              controller: _senha,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Senha do Aluno (Portal)',
+                hintText: 'Deixe vazio para usar a matrícula',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
               controller: _observacao,
               textInputAction: TextInputAction.next,
               textCapitalization: TextCapitalization.sentences,
@@ -297,6 +312,9 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
                 final dia = int.parse(_dia.text.trim());
                 final mensalidade = parseBrlCurrency(_mensalidade.text.trim());
                 if (mensalidade == null || mensalidade <= 0) return;
+                final matriculaVal = _matricula.text.trim().isEmpty ? null : _matricula.text.trim();
+                final senhaVal = _senha.text.trim().isEmpty ? matriculaVal : _senha.text.trim();
+
                 Navigator.of(context).pop(
                   AlunoFormResult(
                     nome: _normalizeName(_nome.text),
@@ -305,7 +323,8 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
                     diaVencimento: dia,
                     mensalidade: mensalidade,
                     pago: _pago,
-                    matricula: _matricula.text.trim().isEmpty ? null : _matricula.text.trim(),
+                    matricula: matriculaVal,
+                    senha: senhaVal,
                   ),
                 );
               },

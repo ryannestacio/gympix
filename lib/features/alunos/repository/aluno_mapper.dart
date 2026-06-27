@@ -40,11 +40,11 @@ class AlunoMapper {
       'diaVencimento': aluno.diaVencimento,
       'mensalidade': aluno.mensalidade,
       'matricula': aluno.matricula,
+      'senha': aluno.senha,
       FirestoreFields.updatedAt: FieldValue.serverTimestamp(),
     };
   }
 
-  /// Converte [DocumentSnapshot] em [Aluno].
   static Aluno fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? <String, dynamic>{};
     final createdAtRaw = data[FirestoreFields.createdAt];
@@ -55,6 +55,10 @@ class AlunoMapper {
     final status = data[FirestoreFields.status];
     final matriculaRaw = data['matricula'];
     final matricula = matriculaRaw is String ? matriculaRaw.trim() : null;
+    final senhaRaw = data['senha'];
+    final senha = senhaRaw is String ? senhaRaw : null;
+    final tenantIdRaw = data[FirestoreFields.tenantId];
+    final tenantId = tenantIdRaw is String ? tenantIdRaw : null;
 
     final pagamentos = <String, PagamentoMensal>{};
     final rawPagamentos = data['pagamentos'];
@@ -95,6 +99,8 @@ class AlunoMapper {
       arquivadoEm: arquivado is Timestamp ? arquivado.toDate() : null,
       pagoLegado: data['pago'] as bool?,
       matricula: matricula,
+      senha: senha,
+      tenantId: tenantId,
       hasPendingWrites: doc.metadata.hasPendingWrites,
     );
   }

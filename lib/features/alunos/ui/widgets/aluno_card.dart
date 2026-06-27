@@ -22,6 +22,7 @@ import '../aluno_form_sheet.dart';
 import 'aluno_history_sheet.dart';
 import '../../providers/alunos_providers.dart';
 import 'aluno_receipt_dialog.dart';
+import 'aluno_id_card_dialog.dart';
 
 class AlunoCard extends ConsumerStatefulWidget {
   const AlunoCard({
@@ -82,6 +83,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       mensalidade: result.mensalidade,
       pago: result.pago,
       matricula: result.matricula,
+      senha: result.senha,
     );
   }
 
@@ -233,8 +235,19 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
                   if (v == 'ativar') await _onAtivar();
                   if (v == 'historico') _abrirHistorico();
                   if (v == 'lembrete') await _enviarLembrete();
+                  if (v == 'carteirinha') _abrirCarteirinha();
                 },
                 itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'carteirinha',
+                    child: Row(
+                      children: [
+                        Icon(Icons.badge_outlined, size: 20),
+                        SizedBox(width: 12),
+                        Text('Gerar carteirinha'),
+                      ],
+                    ),
+                  ),
                   const PopupMenuItem(
                     value: 'duplicar',
                     child: Row(
@@ -1047,6 +1060,15 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       isScrollControlled: true,
       showDragHandle: true,
       builder: (context) => HistoricoAlunoSheet(aluno: aluno),
+    );
+  }
+
+  void _abrirCarteirinha() {
+    showDialog<void>(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: true,
+      builder: (context) => AlunoIdCardDialog(alunoId: widget.alunoId),
     );
   }
 
