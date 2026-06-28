@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/file_saver/file_saver.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../configuracoes/providers/config_providers.dart';
@@ -372,15 +373,48 @@ class _AlunoIdCardDialogState extends ConsumerState<AlunoIdCardDialog> {
         );
         if (mounted) setState(() => _isSharing = false);
         return;
+      } else {
+        final xFile = XFile.fromData(
+          bytes,
+          name: 'carteirinha_${aluno.matricula ?? aluno.id}.png',
+          mimeType: 'image/png',
+        );
+        // ignore: deprecated_member_use
+        await Share.shareXFiles(
+          [xFile],
+          text: text,
+        );
+        if (mounted) setState(() => _isSharing = false);
+        return;
       }
     } catch (e) {
       // Fallback em caso de erro de IO/Repaint
     }
 
     // Fallback / Web: Compartilha como texto corrido
-    // ignore: deprecated_member_use
-    await Share.share(text);
+    try {
+      // ignore: deprecated_member_use
+      await Share.share(text);
+    } catch (_) {
+      // ignore
+    }
     if (mounted) setState(() => _isSharing = false);
+  }
+
+  Future<void> _downloadCard(Aluno aluno) async {
+    final bytes = _generatedBytes;
+    if (bytes == null) return;
+
+    try {
+      final fileName = 'carteirinha_${aluno.matricula ?? aluno.id}.png';
+      await saveAndDownloadFile(bytes, fileName);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao baixar carteirinha: $e')),
+        );
+      }
+    }
   }
 
   bool _isSharing = false;
@@ -505,19 +539,11 @@ class _AlunoIdCardDialogState extends ConsumerState<AlunoIdCardDialog> {
                 const SizedBox(height: 24),
                 
                 // Botões de Ação
-                Row(
+                Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: const Text('Fechar'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
+                    SizedBox(
+                      width: double.infinity,
                       child: FilledButton.icon(
                         onPressed: _isLoading || _generatedBytes == null || _isSharing
                             ? null
@@ -534,6 +560,35 @@ class _AlunoIdCardDialogState extends ConsumerState<AlunoIdCardDialog> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text('Fechar'),
+                          ),
+                        ),
+                        if (kIsWeb) ...[
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _isLoading || _generatedBytes == null
+                                  ? null
+                                  : () => _downloadCard(aluno),
+                              icon: const Icon(Icons.download_rounded),
+                              label: const Text('Baixar'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),

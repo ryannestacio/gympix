@@ -1,0 +1,22 @@
+﻿{
+    "releaseVersion":  "20260628-145157",
+    "generatedAtUtc":  "2026-06-28T17:52:24.7101637Z",
+    "result":  "passed",
+    "projectId":  "gympixapp",
+    "deployScope":  "all",
+    "statuses":  {
+                     "flutterTests":  "passed",
+                     "emulatorTests":  "passed",
+                     "deploy":  "skipped"
+                 },
+    "artifacts":  {
+                      "rulesFile":  "firestore.rules",
+                      "indexesFile":  "firestore.indexes.json",
+                      "rulesSha256":  "8DB323CC654BE81988E2C3F159D24A1FD63060E0BAF44B5E9756DCEDF7AB6AEB",
+                      "indexesSha256":  "A65D6C631630A774859943F8DACE1F7EA34B59B077DD38F71019101736E6ACD3"
+                  },
+    "git":  {
+                "commit":  "03ab67f00a27756d17a35c08c15b3ef60a665e22",
+                "dirty":  true
+            }
+}
