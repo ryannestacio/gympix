@@ -1,9 +1,11 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../alunos/models/aluno.dart';
@@ -335,13 +337,33 @@ class _PortalPainelPageState extends ConsumerState<PortalPainelPage> {
         bottomNavigationBar: SafeArea(
           child: Padding(
             padding: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
-            child: Text(
-              'Desenvolvido com carinho por Ryan Estácio ❤︎',
+            child: RichText(
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: const Color(0xFF8F9BB3).withValues(alpha: 0.35),
-                fontSize: 11,
-                fontWeight: FontWeight.w400,
+              text: TextSpan(
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF8F9BB3).withValues(alpha: 0.35),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w400,
+                ),
+                children: [
+                  const TextSpan(text: 'Desenvolvido Por '),
+                  TextSpan(
+                    text: 'Ryan Estácio',
+                    style: TextStyle(
+                      color: const Color(0xFF8F9BB3).withValues(alpha: 0.65),
+                      decoration: TextDecoration.underline,
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () async {
+                        final uri = Uri.parse('https://ryanestacio.com.br/');
+                        try {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        } catch (_) {
+                          // ignore
+                        }
+                      },
+                  ),
+                ],
               ),
             ),
           ),

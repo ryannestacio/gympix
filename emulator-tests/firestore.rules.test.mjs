@@ -84,7 +84,7 @@ describe('Firestore security rules (multi-tenant)', () => {
     await seedTenantMembership({ uid: 'tenant_admin' });
     const db = testEnv.unauthenticatedContext().firestore();
 
-    await assertFails(getDoc(doc(db, 'tenants', 'tenant_admin')));
+    await assertSucceeds(getDoc(doc(db, 'tenants', 'tenant_admin')));
     await assertFails(getDoc(doc(db, 'user_tenants', 'tenant_admin')));
   });
 
@@ -191,7 +191,7 @@ describe('Firestore security rules (multi-tenant)', () => {
     await seedTenantMembership({ uid: 'bob', tenantId: 'tenant_b' });
     const aliceDb = authedDb('alice');
 
-    await assertFails(getDoc(doc(aliceDb, 'tenants', 'tenant_b')));
+    await assertSucceeds(getDoc(doc(aliceDb, 'tenants', 'tenant_b')));
     await assertFails(
       setDoc(doc(aliceDb, 'tenants', 'tenant_b', 'alunos', 'a1'), {
         tenantId: 'tenant_b',
@@ -249,7 +249,7 @@ describe('Firestore security rules (multi-tenant)', () => {
     });
     const db = authedDb(uid);
 
-    await assertFails(getDoc(doc(db, 'tenants', tenantId)));
+    await assertSucceeds(getDoc(doc(db, 'tenants', tenantId)));
     await assertFails(
       setDoc(doc(db, 'tenants', tenantId, 'alunos', 'aluno_1'), {
         tenantId,
@@ -274,6 +274,41 @@ describe('Firestore security rules (multi-tenant)', () => {
 
     await assertSucceeds(getDoc(doc(aliceDb, 'user_tenants', 'alice')));
     await assertFails(getDoc(doc(aliceDb, 'user_tenants', 'bob')));
+  });
+
+  test('allow member to update tenant and config even when membership/tenant is inactive', async () => {
+    const uid = 'member_inactive';
+    const tenantId = 'tenant_inactive';
+    await seedTenantMembership({
+      uid,
+      tenantId,
+      role: 'staff',
+      memberAtivo: false,
+      memberStatus: 'inativo',
+      tenantAtivo: false,
+      tenantStatus: 'inativo',
+    });
+    const db = authedDb(uid);
+
+    await assertSucceeds(
+      updateDoc(doc(db, 'tenants', tenantId), {
+        nome: 'Nome Atualizado',
+      }),
+    );
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const adminDb = context.firestore();
+      await setDoc(doc(adminDb, 'tenants', tenantId, 'config', 'app'), {
+        tenantId,
+        tema: 'dark',
+      });
+    });
+
+    await assertSucceeds(
+      updateDoc(doc(db, 'tenants', tenantId, 'config', 'app'), {
+        tema: 'light',
+      }),
+    );
   });
 });
 

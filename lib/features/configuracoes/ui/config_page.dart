@@ -667,7 +667,7 @@ class _ConfigPageState extends ConsumerState<ConfigPage> {
 
             final slugText = slugController.text.trim();
             final generatedLink = slugText.isNotEmpty
-                ? 'https://gympix.web.app/portal?tenant=$slugText'
+                ? 'https://gympixapp.web.app/portal?tenant=$slugText'
                 : '';
 
             return Padding(
@@ -1354,7 +1354,7 @@ class _PortalSlugCard extends StatelessWidget {
                             );
                           }
                           return Text(
-                            'Código ativo: @$slug\nLink: gympix.web.app/portal?tenant=$slug',
+                            'Código ativo: @$slug\nLink: gympixapp.web.app/portal?tenant=$slug',
                             style: textTheme.bodySmall?.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),

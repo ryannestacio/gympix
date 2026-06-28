@@ -1,6 +1,6 @@
 # Plano de Implementação - Portal do Aluno (Matrícula & Senha)
 
-Este plano detalha a arquitetura e as modificações necessárias para criar o **Portal do Aluno** na web (`gympix.web.app/portal`) e no aplicativo móvel. O aluno poderá efetuar login usando sua **Matrícula** e uma **Senha** cadastrada, tendo acesso a um painel simples e dinâmico contendo seu status de pagamento atual, histórico de mensalidades e atalho de pagamento Pix (Copia e Cola + QR Code) para quitar as pendências.
+Este plano detalha a arquitetura e as modificações necessárias para criar o **Portal do Aluno** na web (`gympixapp.web.app/portal`) e no aplicativo móvel. O aluno poderá efetuar login usando sua **Matrícula** e uma **Senha** cadastrada, tendo acesso a um painel simples e dinâmico contendo seu status de pagamento atual, histórico de mensalidades e atalho de pagamento Pix (Copia e Cola + QR Code) para quitar as pendências.
 
 ---
 
@@ -15,7 +15,7 @@ Este plano detalha a arquitetura e as modificações necessárias para criar o *
 
 > [!NOTE]
 > 1. **Senha Padrão Inicial**: Você prefere que a senha inicial gerada automaticamente (caso o dono não digite nenhuma) seja a própria **Matrícula** do aluno, ou os **4 primeiros dígitos do telefone**?
-> 2. **Nome da Rota**: O endereço `/portal` é adequado para a URL de acesso do aluno? (Ficaria: `gympix.web.app/portal`).
+> 2. **Nome da Rota**: O endereço `/portal` é adequado para a URL de acesso do aluno? (Ficaria: `gympixapp.web.app/portal`).
 
 ---
 
@@ -44,7 +44,7 @@ Este plano detalha a arquitetura e as modificações necessárias para criar o *
 
 #### [NEW] [portal_login_page.dart](file:///c:/Users/Ryan%20Estacio/Projetos/Flutter/gympix/lib/features/portal_aluno/ui/portal_login_page.dart)
 * Criar a tela de login exclusiva do aluno com visual corporativo moderno (estética dark/azul).
-* Permitir preenchimento automático de matrícula através de parâmetros de URL (ex: `gympix.web.app/portal?matricula=1005`).
+* Permitir preenchimento automático de matrícula através de parâmetros de URL (ex: `gympixapp.web.app/portal?matricula=1005`).
 
 #### [NEW] [portal_painel_page.dart](file:///c:/Users/Ryan%20Estacio/Projetos/Flutter/gympix/lib/features/portal_aluno/ui/portal_painel_page.dart)
 * Criar o painel simplificado do aluno logado:

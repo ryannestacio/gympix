@@ -406,8 +406,8 @@ class _AlunoIdCardDialogState extends ConsumerState<AlunoIdCardDialog> {
     final gymName = gymNameAsync.value ?? 'GymPix Academia';
     final slug = slugAsync.value ?? '';
     final portalLink = slug.isNotEmpty 
-        ? 'https://gympix.web.app/portal?tenant=$slug'
-        : 'https://gympix.web.app/portal';
+        ? 'https://gympixapp.web.app/portal?tenant=$slug'
+        : 'https://gympixapp.web.app/portal';
 
     // Trigger image generation reactively if properties change
     if (aluno != _lastAluno || gymName != _lastGymName || portalLink != _lastPortalLink || _logoImage == null) {

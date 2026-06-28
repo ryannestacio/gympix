@@ -47,10 +47,11 @@ service cloud.firestore {
           tenantIsActive();
     }
 
-    function hasMemberTenantAccess(tenantId) {
+    function hasOwnerTenantAccess(tenantId) {
       return hasMembership() &&
           (membership().get('tenantId', '') is string) &&
           membership().get('tenantId', '') == tenantId &&
+          membership().get('role', '') == 'owner' &&
           tenantExists(tenantId);
     }
 
@@ -88,7 +89,7 @@ service cloud.firestore {
           request.resource.data.tenantId == tenantId &&
           isActiveFlagOrStatus(request.resource.data);
       allow list: if request.query.limit == 1;
-      allow update: if hasMemberTenantAccess(tenantId);
+      allow update: if hasOwnerTenantAccess(tenantId);
       allow delete: if false;
 
       // Cadastro de alunos do tenant.
@@ -110,18 +111,18 @@ service cloud.firestore {
       // Configuração do app/pix do tenant.
       match /config/{docId} {
         allow get: if hasTenantAccess(tenantId) ||
-            hasMemberTenantAccess(tenantId) ||
+            hasOwnerTenantAccess(tenantId) ||
             (isBootstrapTenant(tenantId) && docId in ['app', 'pix']) ||
             (docId == 'pix');
         allow list: if hasTenantAccess(tenantId) ||
-            hasMemberTenantAccess(tenantId);
+            hasOwnerTenantAccess(tenantId);
         allow create: if (hasTenantAccess(tenantId) ||
-              hasMemberTenantAccess(tenantId) ||
+              hasOwnerTenantAccess(tenantId) ||
               (isBootstrapTenant(tenantId) &&
                   docId in ['app', 'pix'])) &&
             incomingTenantFieldMatches(tenantId);
         allow update: if (hasTenantAccess(tenantId) ||
-              hasMemberTenantAccess(tenantId)) &&
+              hasOwnerTenantAccess(tenantId)) &&
             incomingTenantFieldMatches(tenantId);
         allow delete: if false;
       }
