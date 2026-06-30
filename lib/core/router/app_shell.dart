@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -10,7 +9,7 @@ class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
-  static String get _homePath => kIsWeb ? '/app' : '/';
+  static String get _homePath => '/';
 
   static const List<_NavItem> _items = [
     _NavItem(icon: Icons.home_outlined, label: 'Início', path: '/'),

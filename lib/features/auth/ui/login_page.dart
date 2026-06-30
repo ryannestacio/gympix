@@ -107,7 +107,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     ref.listen(authAccessStateProvider, (previous, next) {
       final access = next.asData?.value;
       if (access?.status == AuthAccessStatus.authorized) {
-        context.go(kIsWeb ? '/app' : '/');
+        context.go('/');
       }
     });
 

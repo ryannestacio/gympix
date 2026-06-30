@@ -12,11 +12,6 @@ import 'core/services/firebase_bootstrap.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
 
-bool _isPublicWebLandingPath(String path) {
-  final normalizedPath = path.isEmpty ? '/' : path;
-  return normalizedPath == '/' || normalizedPath == '/site';
-}
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (kIsWeb) {
@@ -24,22 +19,7 @@ Future<void> main() async {
   }
   await initializeDateFormatting('pt_BR');
 
-  final firebaseReady = ensureFirebaseInitialized();
-  if (kIsWeb && _isPublicWebLandingPath(Uri.base.path)) {
-    unawaited(
-      firebaseReady.catchError((Object error, StackTrace stackTrace) {
-        FlutterError.reportError(
-          FlutterErrorDetails(
-            exception: error,
-            stack: stackTrace,
-            library: 'firebase bootstrap',
-          ),
-        );
-      }),
-    );
-  } else {
-    await firebaseReady;
-  }
+  await ensureFirebaseInitialized();
 
   runApp(const ProviderScope(child: GymPixApp()));
 }

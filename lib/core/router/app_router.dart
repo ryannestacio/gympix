@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -12,7 +11,6 @@ import '../../features/auth/ui/session_gate.dart';
 import '../../features/cobranca/ui/cobranca_page.dart';
 import '../../features/configuracoes/ui/config_page.dart';
 import '../../features/home/ui/home_page.dart';
-import '../../features/home/ui/web_landing_page.dart';
 import '../../features/portal_aluno/ui/portal_login_page.dart';
 import '../../features/portal_aluno/ui/portal_painel_page.dart';
 import 'app_shell.dart';
@@ -21,19 +19,17 @@ part 'app_router.g.dart';
 
 @riverpod
 GoRouter appRouter(Ref ref) {
-  const appHomePath = kIsWeb ? '/app' : '/';
-  const isWeb = kIsWeb;
+  const appHomePath = '/';
 
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
       final location = state.matchedLocation;
-      final isWebLanding = isWeb && (location == '/' || location == '/site');
       final isLogin = location == '/login';
       final isDenied = location == '/access-denied';
       final isPublicCobranca = location == '/cobranca';
       final isPortal = location.startsWith('/portal');
-      final isPublicRoute = isPublicCobranca || isWebLanding || isPortal;
+      final isPublicRoute = isPublicCobranca || isPortal;
 
       if (isPublicRoute) return null;
 
@@ -55,18 +51,6 @@ GoRouter appRouter(Ref ref) {
       };
     },
     routes: [
-      if (isWeb)
-        GoRoute(
-          path: '/',
-          pageBuilder: (context, state) =>
-              const NoTransitionPage(child: WebLandingPage()),
-        ),
-      if (isWeb)
-        GoRoute(
-          path: '/site',
-          pageBuilder: (context, state) =>
-              const NoTransitionPage(child: WebLandingPage()),
-        ),
       GoRoute(
         path: '/login',
         pageBuilder: (context, state) =>
