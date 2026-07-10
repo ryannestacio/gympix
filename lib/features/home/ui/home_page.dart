@@ -6,11 +6,10 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/app_theme_extensions.dart';
-import '../../../core/utils/firestore_error_formatter.dart';
 import '../../alunos/models/aluno.dart';
 import '../../alunos/providers/alunos_providers.dart';
-import '../../relatorios/models/competencia_report.dart';
-import '../../relatorios/providers/competencia_report_providers.dart';
+import '../../alunos/ui/widgets/aluno_card.dart';
+import '../../configuracoes/providers/config_providers.dart';
 import '../../relatorios/ui/widgets/report_export_sheet.dart';
 
 class HomePage extends ConsumerWidget {
@@ -29,11 +28,11 @@ class HomePage extends ConsumerWidget {
     ref.watch(pagamentosAcumuladosBackfillRunnerProvider);
     ref.watch(matriculasBackfillRunnerProvider);
     final competenciaSelecionada = ref.watch(competenciaSelecionadaProvider);
-    final report = ref.watch(competenciaReportProvider);
     final stats = ref.watch(dashboardStatsProvider);
     final alunosAtivos =
         ref.watch(alunosStreamProvider).value ?? const <Aluno>[];
-    final proximos = _buildProximosVencimentos(alunosAtivos);
+    final vencidos = _obterAlunosVencidos(alunosAtivos);
+    final proximos = _obterVencimentosProximos(alunosAtivos);
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final ext = AppThemeExtensions.of(context);
@@ -271,13 +270,43 @@ class HomePage extends ConsumerWidget {
                     const SizedBox(height: AppTheme.spacingSm),
                     const SizedBox(height: AppTheme.spacingLg),
                     Text(
-                      'Vencimentos próximos',
+                      'Vencimentos e Pendências',
                       style: textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: AppTheme.spacingSm),
-                    _VencimentosSection(itens: proximos),
+                    _AlertSectionCard(
+                      title: 'Vencidos / Atrasados',
+                      subtitle: vencidos.isEmpty
+                          ? 'Nenhum aluno em atraso'
+                          : '${vencidos.length} aluno(s) com parcelas vencidas',
+                      icon: Icons.warning_amber_rounded,
+                      color: scheme.error,
+                      onTap: () {
+                        AlunosListPopupSheet.show(
+                          context,
+                          title: 'Alunos Vencidos',
+                          alunos: vencidos,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: AppTheme.spacingSm),
+                    _AlertSectionCard(
+                      title: 'Vencimentos próximos (7 dias)',
+                      subtitle: proximos.isEmpty
+                          ? 'Nenhum vencimento nos próximos 7 dias'
+                          : '${proximos.length} aluno(s) vencendo em breve',
+                      icon: Icons.schedule_rounded,
+                      color: ext.warning,
+                      onTap: () {
+                        AlunosListPopupSheet.show(
+                          context,
+                          title: 'Vencimentos Próximos',
+                          alunos: proximos,
+                        );
+                      },
+                    ),
                     const SizedBox(height: AppTheme.spacingXl),
                     Text(
                       'Ações',
@@ -403,82 +432,66 @@ class _CompetenciaSelector extends StatelessWidget {
   }
 }
 
-class _VencimentoItem {
-  const _VencimentoItem({
-    required this.aluno,
-    required this.label,
-    required this.daysUntil,
-  });
-
-  final Aluno aluno;
-  final String label;
-  final int daysUntil;
+List<Aluno> _obterAlunosVencidos(List<Aluno> alunos) {
+  final now = DateTime.now();
+  final list = <Aluno>[];
+  for (final aluno in alunos) {
+    final atrasados = aluno
+        .pagamentosAte(now, referenciaStatus: now)
+        .where((p) => p.status == PagamentoStatus.atrasado)
+        .toList();
+    if (atrasados.isNotEmpty) {
+      list.add(aluno);
+    }
+  }
+  list.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
+  return list;
 }
 
-List<_VencimentoItem> _buildProximosVencimentos(List<Aluno> alunos) {
+List<Aluno> _obterVencimentosProximos(List<Aluno> alunos) {
   final now = DateTime.now();
   final hoje = DateTime(now.year, now.month, now.day);
-  final itens = <_VencimentoItem>[];
-
+  final list = <Aluno>[];
   for (final aluno in alunos) {
+    final atrasados = aluno
+        .pagamentosAte(now, referenciaStatus: now)
+        .where((p) => p.status == PagamentoStatus.atrasado)
+        .toList();
+    if (atrasados.isNotEmpty) continue;
+
     if (aluno.pago) continue;
     final dueDate = Aluno.dataVencimento(aluno.diaVencimento, now);
     final normalizedDue = DateTime(dueDate.year, dueDate.month, dueDate.day);
     final daysUntil = normalizedDue.difference(hoje).inDays;
-    if (daysUntil < 0 || daysUntil > 7) continue;
-
-    final label = switch (daysUntil) {
-      0 => 'Vence hoje',
-      1 => 'Vence amanhã',
-      _ => 'Vence em $daysUntil dias',
-    };
-
-    itens.add(
-      _VencimentoItem(aluno: aluno, label: label, daysUntil: daysUntil),
-    );
+    if (daysUntil >= 0 && daysUntil <= 7) {
+      list.add(aluno);
+    }
   }
-
-  itens.sort((a, b) {
-    final byDays = a.daysUntil.compareTo(b.daysUntil);
-    if (byDays != 0) return byDays;
-    return a.aluno.nome.toLowerCase().compareTo(b.aluno.nome.toLowerCase());
-  });
-
-  return itens;
+  list.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
+  return list;
 }
 
-class _VencimentosSection extends StatelessWidget {
-  const _VencimentosSection({required this.itens});
+class _AlertSectionCard extends StatelessWidget {
+  const _AlertSectionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
 
-  static final NumberFormat _currencyFormatter = NumberFormat.currency(
-    locale: 'pt_BR',
-    symbol: 'R\$',
-  );
-
-  final List<_VencimentoItem> itens;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    if (itens.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppTheme.spacingLg),
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        ),
-        child: Text(
-          'Nenhum aluno com vencimento para hoje ou para os próximos 7 dias.',
-          style: textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-        ),
-      );
-    }
-
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingMd),
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -492,57 +505,152 @@ class _VencimentosSection extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        children: itens
-            .map(
-              (item) => Padding(
-                padding: const EdgeInsets.only(bottom: AppTheme.spacingSm),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: scheme.primaryContainer.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                      ),
-                      child: Text(
-                        '${item.aluno.diaVencimento}',
-                        style: textTheme.labelLarge?.copyWith(
-                          color: scheme.primary,
-                          fontWeight: FontWeight.w800,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.spacingSm),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  ),
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                const SizedBox(width: AppTheme.spacingMd),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: AppTheme.spacingSm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.aluno.nome,
-                            style: textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${item.label} - ${_currencyFormatter.format(item.aluno.mensalidade)}',
-                            style: textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: scheme.onSurfaceVariant,
+                  size: 24,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AlunosListPopupSheet extends ConsumerWidget {
+  const AlunosListPopupSheet({
+    super.key,
+    required this.title,
+    required this.alunos,
+  });
+
+  final String title;
+  final List<Aluno> alunos;
+
+  static Future<void> show(
+    BuildContext context, {
+    required String title,
+    required List<Aluno> alunos,
+  }) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusLg),
+        ),
+      ),
+      builder: (context) => AlunosListPopupSheet(title: title, alunos: alunos),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+    final scheme = theme.colorScheme;
+    final defaultMensalidade = ref.watch(defaultMensalidadeStreamProvider).value ?? 0.0;
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingLg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                title,
+                style: textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: scheme.onSurface,
                 ),
               ),
-            )
-            .toList(),
-      ),
+              const SizedBox(height: 4),
+              Text(
+                'Exibindo ${alunos.length} aluno(s).',
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: alunos.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Nenhum aluno encontrado.',
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: scrollController,
+                        itemCount: alunos.length,
+                        itemBuilder: (context, index) {
+                          final aluno = alunos[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: AlunoCard(
+                              alunoId: aluno.id,
+                              defaultMensalidade: defaultMensalidade,
+                              onSynced: () {},
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
