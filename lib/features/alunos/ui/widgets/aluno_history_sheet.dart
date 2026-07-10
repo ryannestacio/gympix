@@ -9,6 +9,7 @@ import '../../../../core/utils/first_letter_uppercase_formatter.dart';
 import '../../controllers/alunos_actions_controller.dart';
 import '../../models/aluno.dart';
 import '../../providers/alunos_providers.dart';
+import 'receipt_dialog.dart';
 
 class HistoricoAlunoSheet extends ConsumerStatefulWidget {
   const HistoricoAlunoSheet({super.key, required this.aluno});
@@ -284,6 +285,28 @@ class _HistoricoAlunoSheetState extends ConsumerState<HistoricoAlunoSheet> {
                             ),
                             const SizedBox(height: 4),
                             Text(p.observacao!, style: textTheme.bodySmall),
+                          ],
+                          if (p.status == PagamentoStatus.pago) ...[
+                            const SizedBox(height: AppTheme.spacingSm),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: () => ReceiptDialog.show(
+                                  context,
+                                  aluno: aluno,
+                                  pagamento: p,
+                                ),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: scheme.primary,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                icon: const Icon(Icons.share_rounded, size: 16),
+                                label: const Text(
+                                  'Compartilhar Recibo',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ),
                           ],
                         ],
                       ),
