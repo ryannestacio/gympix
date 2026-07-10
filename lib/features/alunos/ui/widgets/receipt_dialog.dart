@@ -68,7 +68,7 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
   }
 
   Future<ui.Image> _loadLogo() async {
-    final data = await rootBundle.load('assets/images/logo-gympix-pb.png');
+    final data = await rootBundle.load('assets/images/logo-gympix-colorida.png');
     final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
     final frame = await codec.getNextFrame();
     return frame.image;
@@ -125,77 +125,65 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
       _logoImage = logo;
 
       final recorder = ui.PictureRecorder();
-      // Usaremos o tamanho de 800 x 600 para acomodar todos os campos de forma premium
-      final canvas = Canvas(recorder, const Rect.fromLTWH(0, 0, 800, 600));
+      final canvas = Canvas(recorder, const Rect.fromLTWH(0, 0, 600, 800));
 
-      const width = 800.0;
-      const height = 600.0;
+      const width = 600.0;
+      const height = 800.0;
 
-      // 1. Fundo Gradiente com cantos arredondados
+      // 1. Fundo cinza claro suave
       final outerRRect = RRect.fromRectAndRadius(
         const Rect.fromLTWH(0, 0, width, height),
         const Radius.circular(24),
       );
-      
-      final bgPaint = Paint()
-        ..shader = ui.Gradient.linear(
-          Offset.zero,
-          const Offset(800, 600),
-          const [
-            Color(0xFF252E3C),
-            Color(0xFF161B24),
-          ],
-        );
+      final bgPaint = Paint()..color = const Color(0xFFF8FAFC);
       canvas.drawRRect(outerRRect, bgPaint);
 
-      // Borda decorativa azul
+      // Borda decorativa cinza neutro
       final borderPaint = Paint()
-        ..color = const Color(0xFF3B82F6).withValues(alpha: 0.3)
+        ..color = const Color(0xFFE2E8F0)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3.0;
       canvas.drawRRect(outerRRect, borderPaint);
 
-      // 2. Cabeçalho destacado
-      final headerPath = Path()
-        ..addRRect(RRect.fromRectAndCorners(
-          const Rect.fromLTWH(0, 0, 800, 96),
-          topLeft: const Radius.circular(24),
-          topRight: const Radius.circular(24),
-        ));
-      final headerPaint = Paint()..color = const Color(0xFF3B82F6).withValues(alpha: 0.15);
-      canvas.drawPath(headerPath, headerPaint);
-      
-      final headerBorderPaint = Paint()
-        ..color = const Color(0xFF3B82F6).withValues(alpha: 0.2)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0;
-      canvas.drawLine(const Offset(0, 96), const Offset(800, 96), headerBorderPaint);
+      // Card interno branco
+      final innerRRect = RRect.fromRectAndRadius(
+        const Rect.fromLTWH(24, 24, width - 48, height - 48),
+        const Radius.circular(20),
+      );
+      final innerCardPaint = Paint()..color = Colors.white;
+      canvas.drawRRect(innerRRect, innerCardPaint);
 
-      // Título do cabeçalho
+      final innerBorderPaint = Paint()
+        ..color = const Color(0xFFE2E8F0)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+      canvas.drawRRect(innerRRect, innerBorderPaint);
+
+      // 2. Cabeçalho Clean
       final titlePainter = TextPainter(
         text: const TextSpan(
           text: 'COMPROVANTE DE PAGAMENTO',
           style: TextStyle(
-            color: Colors.white,
-            fontSize: 22,
+            color: Color(0xFF0F172A),
+            fontSize: 18,
             fontWeight: FontWeight.w900,
-            letterSpacing: 1.0,
+            letterSpacing: 0.5,
             fontFamily: 'Roboto',
           ),
         ),
         textDirection: ui.TextDirection.ltr,
       );
       titlePainter.layout();
-      titlePainter.paint(canvas, const Offset(32, 22));
+      titlePainter.paint(canvas, const Offset(48, 48));
 
       // Nome da Academia
       final gymPainter = TextPainter(
         text: TextSpan(
           text: gymName.toUpperCase(),
-          style: TextStyle(
-            color: const Color(0xFF3B82F6).withValues(alpha: 0.9),
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
+          style: const TextStyle(
+            color: Color(0xFF3B82F6),
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
             letterSpacing: 0.5,
             fontFamily: 'Roboto',
           ),
@@ -204,25 +192,31 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
         maxLines: 1,
         ellipsis: '...',
       );
-      gymPainter.layout(maxWidth: 500);
-      gymPainter.paint(canvas, const Offset(32, 54));
+      gymPainter.layout(maxWidth: 340);
+      gymPainter.paint(canvas, const Offset(48, 74));
 
       // Logo GymPix no cabeçalho
       final srcRect = Rect.fromLTWH(0, 0, logo.width.toDouble(), logo.height.toDouble());
       final logoWidth = (logo.width * 36) / logo.height;
-      final destRect = Rect.fromLTWH(800 - 32 - logoWidth, 30, logoWidth, 36);
+      final destRect = Rect.fromLTWH(600 - 48 - logoWidth, 48, logoWidth, 36);
       canvas.drawImageRect(logo, srcRect, destRect, Paint());
 
-      // 3. Informações do Aluno e Pagamento
-      double currentY = 132.0;
+      // Linha divisória horizontal
+      final dividerPaint = Paint()
+        ..color = const Color(0xFFE2E8F0)
+        ..strokeWidth = 1.0;
+      canvas.drawLine(const Offset(48, 110), const Offset(600 - 48, 110), dividerPaint);
+
+      // 3. Informações em duas colunas (estilo recibo de banco)
+      double currentY = 140.0;
 
       void drawInfoRow(String label, String value) {
         final labelPainter = TextPainter(
           text: TextSpan(
-            text: '$label:',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 15,
+            text: label,
+            style: const TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 14,
               fontWeight: FontWeight.w500,
               fontFamily: 'Roboto',
             ),
@@ -230,14 +224,14 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
           textDirection: ui.TextDirection.ltr,
         );
         labelPainter.layout();
-        labelPainter.paint(canvas, Offset(32, currentY));
+        labelPainter.paint(canvas, Offset(48, currentY));
 
         final valuePainter = TextPainter(
           text: TextSpan(
             text: value,
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
+              color: Color(0xFF0F172A),
+              fontSize: 14,
               fontWeight: FontWeight.bold,
               fontFamily: 'Roboto',
             ),
@@ -246,10 +240,10 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
           maxLines: 1,
           ellipsis: '...',
         );
-        valuePainter.layout(maxWidth: 700 - 150);
-        valuePainter.paint(canvas, Offset(160, currentY - 1));
+        valuePainter.layout(maxWidth: 320);
+        valuePainter.paint(canvas, Offset(600 - 48 - valuePainter.width, currentY));
 
-        currentY += 36.0;
+        currentY += 40.0;
       }
 
       drawInfoRow('Aluno', aluno.nome);
@@ -264,27 +258,27 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
       final codControle = _gerarCodigoControle(aluno.id, pagamento.competencia, pagamento.pagoEm);
       drawInfoRow('Cód. Controle', codControle);
 
-      // 4. Painel de Valor Recebido (Caixa Verde Premium)
-      currentY += 8.0;
+      // 4. Painel de Valor Recebido (Caixa Verde Claro Moderno)
+      currentY += 10.0;
       final valueRRect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(32, currentY, 800 - 64, 110),
+        Rect.fromLTWH(48, currentY, 600 - 96, 100),
         const Radius.circular(16),
       );
-      final valueBgPaint = Paint()..color = const Color(0xFF10B981).withValues(alpha: 0.08);
+      final valueBgPaint = Paint()..color = const Color(0xFFF0FDF4);
       canvas.drawRRect(valueRRect, valueBgPaint);
 
       final valueBorderPaint = Paint()
-        ..color = const Color(0xFF10B981).withValues(alpha: 0.2)
+        ..color = const Color(0xFFBBF7D0)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0;
+        ..strokeWidth = 1.5;
       canvas.drawRRect(valueRRect, valueBorderPaint);
 
       final valLabelPainter = TextPainter(
         text: const TextSpan(
           text: 'VALOR RECEBIDO',
           style: TextStyle(
-            color: Color(0xFF10B981),
-            fontSize: 13,
+            color: Color(0xFF16A34A),
+            fontSize: 12,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.0,
             fontFamily: 'Roboto',
@@ -293,7 +287,7 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
         textDirection: ui.TextDirection.ltr,
       );
       valLabelPainter.layout();
-      valLabelPainter.paint(canvas, Offset(56, currentY + 22));
+      valLabelPainter.paint(canvas, Offset(72, currentY + 18));
 
       final currencyStr = NumberFormat.currency(
         locale: 'pt_BR',
@@ -304,8 +298,8 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
         text: TextSpan(
           text: currencyStr,
           style: const TextStyle(
-            color: Color(0xFF10B981),
-            fontSize: 34,
+            color: Color(0xFF14532D),
+            fontSize: 32,
             fontWeight: FontWeight.w900,
             fontFamily: 'Roboto',
           ),
@@ -313,18 +307,18 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
         textDirection: ui.TextDirection.ltr,
       );
       valValuePainter.layout();
-      valValuePainter.paint(canvas, Offset(56, currentY + 44));
+      valValuePainter.paint(canvas, Offset(72, currentY + 38));
 
-      currentY += 134.0;
+      currentY += 124.0;
 
       // 5. Observações (se houver)
       if (pagamento.observacao?.trim().isNotEmpty == true) {
         final obsTitlePainter = TextPainter(
-          text: TextSpan(
+          text: const TextSpan(
             text: 'Observações:',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.4),
-              fontSize: 13,
+              color: Color(0xFF94A3B8),
+              fontSize: 12,
               fontWeight: FontWeight.bold,
               fontFamily: 'Roboto',
             ),
@@ -332,16 +326,16 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
           textDirection: ui.TextDirection.ltr,
         );
         obsTitlePainter.layout();
-        obsTitlePainter.paint(canvas, Offset(32, currentY));
+        obsTitlePainter.paint(canvas, Offset(48, currentY));
 
         currentY += 18.0;
 
         final obsTextPainter = TextPainter(
           text: TextSpan(
             text: pagamento.observacao!,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.85),
-              fontSize: 14,
+            style: const TextStyle(
+              color: Color(0xFF475569),
+              fontSize: 13,
               fontStyle: FontStyle.italic,
               fontFamily: 'Roboto',
             ),
@@ -350,17 +344,30 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
           maxLines: 2,
           ellipsis: '...',
         );
-        obsTextPainter.layout(maxWidth: 800 - 64);
-        obsTextPainter.paint(canvas, Offset(32, currentY));
+        obsTextPainter.layout(maxWidth: 600 - 96);
+        obsTextPainter.paint(canvas, Offset(48, currentY));
       }
 
-      // 6. Rodapé Oficial
+      // 6. Linha tracejada horizontal de corte (picote)
+      final dashPaint = Paint()
+        ..color = const Color(0xFFCBD5E1)
+        ..strokeWidth = 2.0
+        ..style = PaintingStyle.stroke;
+      double startX = 48;
+      const dashWidth = 8;
+      const dashSpace = 6;
+      while (startX < 600 - 48) {
+        canvas.drawLine(Offset(startX, 710), Offset(startX + dashWidth, 710), dashPaint);
+        startX += dashWidth + dashSpace;
+      }
+
+      // 7. Rodapé Oficial
       final digitalPainter = TextPainter(
         text: const TextSpan(
           text: 'COMPROVANTE OFICIAL EMITIDO VIA GYMPIX',
           style: TextStyle(
             color: Color(0xFF3B82F6),
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.bold,
             letterSpacing: 0.5,
             fontFamily: 'Roboto',
@@ -369,14 +376,14 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
         textDirection: ui.TextDirection.ltr,
       );
       digitalPainter.layout();
-      digitalPainter.paint(canvas, Offset(32, 550));
+      digitalPainter.paint(canvas, Offset(48, 740));
 
       final checkPainter = TextPainter(
         text: const TextSpan(
           text: '✓ AUTENTICADO',
           style: TextStyle(
-            color: Color(0xFF10B981),
-            fontSize: 12,
+            color: Color(0xFF16A34A),
+            fontSize: 11,
             fontWeight: FontWeight.w900,
             letterSpacing: 0.5,
             fontFamily: 'Roboto',
@@ -385,11 +392,11 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
         textDirection: ui.TextDirection.ltr,
       );
       checkPainter.layout();
-      checkPainter.paint(canvas, Offset(800 - 32 - checkPainter.width, 550));
+      checkPainter.paint(canvas, Offset(600 - 48 - checkPainter.width, 740));
 
       // Encerrar gravação e obter bytes
       final picture = recorder.endRecording();
-      final img = await picture.toImage(800, 600);
+      final img = await picture.toImage(600, 800);
       final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
       final bytes = byteData!.buffer.asUint8List();
 
@@ -574,7 +581,7 @@ class _ReceiptDialogState extends ConsumerState<ReceiptDialog> {
                   child: Container(
                     color: Colors.black12,
                     child: AspectRatio(
-                      aspectRatio: 800 / 600,
+                      aspectRatio: 600 / 800,
                       child: Image.memory(
                         _generatedBytes!,
                         fit: BoxFit.contain,
