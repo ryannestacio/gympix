@@ -115,23 +115,42 @@ class AlunosRepository {
     required bool pago,
     String? matricula,
     String? senha,
+    int mesesAtrasadosAnteriores = 0,
   }) {
-    final competencia = Aluno.competenciaAtual();
+    final mapPagamentos = <String, PagamentoMensal>{};
     final now = DateTime.now();
-    final diaVencimentoEfetivo = Aluno.diaVencimentoEfetivo(diaVencimento, now);
-    final status = pago
+
+    // 1. Mês atual
+    final competenciaAtual = Aluno.competenciaAtual();
+    final diaVencimentoEfetivoAtual = Aluno.diaVencimentoEfetivo(diaVencimento, now);
+    final statusAtual = pago
         ? PagamentoStatus.pago
-        : (now.day > diaVencimentoEfetivo
+        : (now.day > diaVencimentoEfetivoAtual
               ? PagamentoStatus.atrasado
               : PagamentoStatus.pendente);
 
-    final pagamentoInicial = PagamentoMensal(
-      competencia: competencia,
+    mapPagamentos[competenciaAtual] = PagamentoMensal(
+      competencia: competenciaAtual,
       valor: mensalidade,
-      status: status,
-      diaVencimento: diaVencimentoEfetivo,
+      status: statusAtual,
+      diaVencimento: diaVencimentoEfetivoAtual,
       pagoEm: pago ? now : null,
     );
+
+    // 2. Meses anteriores atrasados
+    for (var i = 1; i <= mesesAtrasadosAnteriores; i++) {
+      final pastDate = DateTime(now.year, now.month - i, 1);
+      final compPast = Aluno.competenciaAtual(pastDate);
+      final diaVencimentoEfetivoPast = Aluno.diaVencimentoEfetivo(diaVencimento, pastDate);
+
+      mapPagamentos[compPast] = PagamentoMensal(
+        competencia: compPast,
+        valor: mensalidade,
+        status: PagamentoStatus.atrasado,
+        diaVencimento: diaVencimentoEfetivoPast,
+        pagoEm: null,
+      );
+    }
 
     final novo = Aluno(
       id: '',
@@ -141,7 +160,7 @@ class AlunosRepository {
       diaVencimento: diaVencimento,
       mensalidade: mensalidade,
       criadoEm: DateTime.now(),
-      pagamentos: {competencia: pagamentoInicial},
+      pagamentos: mapPagamentos,
       pagoLegado: null,
       matricula: matricula?.trim().isEmpty == true ? null : matricula?.trim(),
       senha: senha,
@@ -241,6 +260,41 @@ class AlunosRepository {
         'atualizadoEm': FieldValue.serverTimestamp(),
       },
       'pago': pago,
+      FirestoreFields.updatedAt: FieldValue.serverTimestamp(),
+    };
+    return _retryPolicy.execute(() => _alunosCol.doc(aluno.id).update(data));
+  }
+
+  Future<void> registrarCompetenciaAvulsa({
+    required Aluno aluno,
+    required String competencia,
+    required PagamentoStatus status,
+    required double valor,
+    DateTime? pagoEm,
+    String? comprovanteUrl,
+    String? observacao,
+  }) {
+    final refDate = Aluno.tryParseCompetencia(competencia) ?? DateTime.now();
+    final diaVencimentoEfetivo = Aluno.diaVencimentoEfetivo(
+      aluno.diaVencimento,
+      refDate,
+    );
+
+    final pagamento = PagamentoMensal(
+      competencia: competencia,
+      valor: valor,
+      status: status,
+      diaVencimento: diaVencimentoEfetivo,
+      pagoEm: status == PagamentoStatus.pago ? (pagoEm ?? DateTime.now()) : null,
+      comprovanteUrl: status == PagamentoStatus.pago ? comprovanteUrl?.trim() : null,
+      observacao: status == PagamentoStatus.pago ? observacao?.trim() : null,
+    );
+
+    final data = {
+      'pagamentos.$competencia': {
+        ...AlunoMapper.pagamentoToFirestore(pagamento),
+        'atualizadoEm': FieldValue.serverTimestamp(),
+      },
       FirestoreFields.updatedAt: FieldValue.serverTimestamp(),
     };
     return _retryPolicy.execute(() => _alunosCol.doc(aluno.id).update(data));

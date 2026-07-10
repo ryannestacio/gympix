@@ -17,6 +17,7 @@ class AlunoFormResult {
     required this.pago,
     this.matricula,
     this.senha,
+    this.mesesAtrasadosAnteriores = 0,
   });
 
   final String nome;
@@ -27,6 +28,7 @@ class AlunoFormResult {
   final bool pago;
   final String? matricula;
   final String? senha;
+  final int mesesAtrasadosAnteriores;
 }
 
 class AlunoFormSheet extends StatefulWidget {
@@ -131,6 +133,7 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
   );
 
   bool _pago = false;
+  int _mesesAtrasadosAnteriores = 0;
 
   @override
   void initState() {
@@ -305,6 +308,32 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
               value: _pago,
               onChanged: (v) => setState(() => _pago = v),
             ),
+            if (widget.initial == null) ...[
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                value: _mesesAtrasadosAnteriores,
+                decoration: const InputDecoration(
+                  labelText: 'Mensalidades em atraso anteriores ao cadastro',
+                ),
+                items: List.generate(7, (index) {
+                  return DropdownMenuItem<int>(
+                    value: index,
+                    child: Text(
+                      index == 0
+                          ? 'Nenhuma'
+                          : index == 1
+                              ? '1 mês atrasado'
+                              : '$index meses atrasados',
+                    ),
+                  );
+                }),
+                onChanged: (v) {
+                  if (v != null) {
+                    setState(() => _mesesAtrasadosAnteriores = v);
+                  }
+                },
+              ),
+            ],
             const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: () {
@@ -325,6 +354,7 @@ class _AlunoFormSheetState extends State<AlunoFormSheet> {
                     pago: _pago,
                     matricula: matriculaVal,
                     senha: senhaVal,
+                    mesesAtrasadosAnteriores: _mesesAtrasadosAnteriores,
                   ),
                 );
               },

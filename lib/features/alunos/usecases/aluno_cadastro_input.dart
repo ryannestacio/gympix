@@ -8,6 +8,7 @@ class AlunoCadastroInput {
     required this.pago,
     this.matricula,
     this.senha,
+    this.mesesAtrasadosAnteriores = 0,
   });
 
   final String nome;
@@ -18,4 +19,5 @@ class AlunoCadastroInput {
   final bool pago;
   final String? matricula;
   final String? senha;
+  final int mesesAtrasadosAnteriores;
 }

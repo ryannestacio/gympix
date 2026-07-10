@@ -84,6 +84,7 @@ class _AlunoCardState extends ConsumerState<AlunoCard> {
       pago: result.pago,
       matricula: result.matricula,
       senha: result.senha,
+      mesesAtrasadosAnteriores: result.mesesAtrasadosAnteriores,
     );
   }
 

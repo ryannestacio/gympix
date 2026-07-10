@@ -92,6 +92,31 @@ class AlunosActionsController {
     );
   }
 
+  Future<void> registrarCompetenciaAvulsa({
+    required Aluno aluno,
+    required String competencia,
+    required PagamentoStatus status,
+    required double valor,
+    DateTime? pagoEm,
+    String? comprovanteUrl,
+    String? observacao,
+    String? operationId,
+  }) {
+    return _runLocked(
+      operationId ??
+          'aluno:pagamento:avulso:${aluno.id}:$competencia',
+      () => _repository.registrarCompetenciaAvulsa(
+        aluno: aluno,
+        competencia: competencia,
+        status: status,
+        valor: valor,
+        pagoEm: pagoEm,
+        comprovanteUrl: comprovanteUrl,
+        observacao: observacao,
+      ),
+    );
+  }
+
   Future<void> desfazerPagamento(Aluno aluno, {String? operationId}) {
     return _runLocked(
       operationId ??

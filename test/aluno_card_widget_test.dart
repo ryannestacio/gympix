@@ -41,6 +41,18 @@ class FakeAlunosActionsController implements AlunosActionsController {
   }) async {}
 
   @override
+  Future<void> registrarCompetenciaAvulsa({
+    required Aluno aluno,
+    required String competencia,
+    required PagamentoStatus status,
+    required double valor,
+    DateTime? pagoEm,
+    String? comprovanteUrl,
+    String? observacao,
+    String? operationId,
+  }) async {}
+
+  @override
   Future<void> desfazerPagamento(Aluno aluno, {String? operationId}) async {}
 
   @override

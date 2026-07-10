@@ -1,47 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/app_theme_extensions.dart';
 import '../../../../core/utils/currency_input_formatter.dart';
 import '../../../../core/utils/first_letter_uppercase_formatter.dart';
+import '../../controllers/alunos_actions_controller.dart';
 import '../../models/aluno.dart';
+import '../../providers/alunos_providers.dart';
 
-class HistoricoAlunoSheet extends StatefulWidget {
+class HistoricoAlunoSheet extends ConsumerStatefulWidget {
   const HistoricoAlunoSheet({super.key, required this.aluno});
 
   final Aluno aluno;
 
   @override
-  State<HistoricoAlunoSheet> createState() => _HistoricoAlunoSheetState();
+  ConsumerState<HistoricoAlunoSheet> createState() => _HistoricoAlunoSheetState();
 }
 
-class _HistoricoAlunoSheetState extends State<HistoricoAlunoSheet> {
+class _HistoricoAlunoSheetState extends ConsumerState<HistoricoAlunoSheet> {
   String _competenciaSelecionada = 'todas';
 
-  List<PagamentoMensal> get _historicoCompleto {
-    final referencia = DateTime.now();
-    final itens = widget.aluno.pagamentosAte(
-      referencia,
-      referenciaStatus: referencia,
+  void _abrirAdicionarCompetencia(Aluno aluno) {
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (context) {
+        return AnimatedPadding(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppTheme.spacingLg,
+                AppTheme.spacingSm,
+                AppTheme.spacingLg,
+                AppTheme.spacingLg,
+              ),
+              child: AdicionarCompetenciaSheet(aluno: aluno),
+            ),
+          ),
+        );
+      },
     );
-    itens.sort((a, b) => b.competencia.compareTo(a.competencia));
-    return itens;
-  }
-
-  List<PagamentoMensal> get _itensOrdenados {
-    final itens = _historicoCompleto;
-    if (_competenciaSelecionada == 'todas') return itens;
-    return itens
-        .where((item) => item.competencia == _competenciaSelecionada)
-        .toList();
-  }
-
-  List<String> get _competencias {
-    final competencias =
-        _historicoCompleto.map((item) => item.competencia).toSet().toList()
-          ..sort((a, b) => b.compareTo(a));
-    return ['todas', ...competencias];
   }
 
   @override
@@ -49,7 +58,26 @@ class _HistoricoAlunoSheetState extends State<HistoricoAlunoSheet> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final textTheme = theme.textTheme;
-    final itens = _itensOrdenados;
+
+    final aluno = ref.watch(alunoProvider(widget.aluno.id)) ?? widget.aluno;
+
+    final referencia = DateTime.now();
+    final historicoCompleto = aluno.pagamentosAte(
+      referencia,
+      referenciaStatus: referencia,
+    );
+    historicoCompleto.sort((a, b) => b.competencia.compareTo(a.competencia));
+
+    final itens = _competenciaSelecionada == 'todas'
+        ? historicoCompleto
+        : historicoCompleto
+            .where((item) => item.competencia == _competenciaSelecionada)
+            .toList();
+
+    final listCompetencias =
+        historicoCompleto.map((item) => item.competencia).toSet().toList()
+          ..sort((a, b) => b.compareTo(a));
+    final competencias = ['todas', ...listCompetencias];
 
     return SafeArea(
       child: Padding(
@@ -63,18 +91,36 @@ class _HistoricoAlunoSheetState extends State<HistoricoAlunoSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Hist\u00f3rico mensal - ${widget.aluno.nome}',
-              style: textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: AppTheme.spacingXs),
-            Text(
-              'Filtre por compet\u00eancia para revisar pagamentos anteriores.',
-              style: textTheme.bodySmall?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Hist\u00f3rico mensal - ${aluno.nome}',
+                        style: textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingXs),
+                      Text(
+                        'Filtre ou lance competências anteriores.',
+                        style: textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  onPressed: () => _abrirAdicionarCompetencia(aluno),
+                  icon: const Icon(Icons.add_card_rounded),
+                  tooltip: 'Lançar mês anterior',
+                ),
+              ],
             ),
             const SizedBox(height: AppTheme.spacingMd),
             DropdownButtonFormField<String>(
@@ -83,7 +129,7 @@ class _HistoricoAlunoSheetState extends State<HistoricoAlunoSheet> {
                 labelText: 'Compet\u00eancia',
                 prefixIcon: Icon(Icons.calendar_month_outlined),
               ),
-              items: _competencias
+              items: competencias
                   .map(
                     (competencia) => DropdownMenuItem<String>(
                       value: competencia,
@@ -497,6 +543,270 @@ class _RegistroPagamentoSheetState extends State<RegistroPagamentoSheet> {
                 );
               },
               child: const Text('Confirmar pagamento'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AdicionarCompetenciaSheet extends StatefulWidget {
+  const AdicionarCompetenciaSheet({super.key, required this.aluno});
+
+  final Aluno aluno;
+
+  @override
+  State<AdicionarCompetenciaSheet> createState() => _AdicionarCompetenciaSheetState();
+}
+
+class _AdicionarCompetenciaSheetState extends State<AdicionarCompetenciaSheet> {
+  final _formKey = GlobalKey<FormState>();
+  
+  late int _mes;
+  late int _ano;
+  PagamentoStatus _status = PagamentoStatus.atrasado;
+  
+  late final _valorController = TextEditingController(
+    text: formatBrl(widget.aluno.mensalidade),
+  );
+  final _comprovanteController = TextEditingController();
+  final _obsController = TextEditingController();
+  DateTime _pagoEm = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _mes = now.month;
+    _ano = now.year;
+  }
+
+  @override
+  void dispose() {
+    _valorController.dispose();
+    _comprovanteController.dispose();
+    _obsController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isPago = _status == PagamentoStatus.pago;
+
+    final anosDisponiveis = List.generate(4, (index) => DateTime.now().year - index);
+
+    final mesesNomes = [
+      'Janeiro',
+      'Fevereiro',
+      'Março',
+      'Abril',
+      'Maio',
+      'Junho',
+      'Julho',
+      'Agosto',
+      'Setembro',
+      'Outubro',
+      'Novembro',
+      'Dezembro',
+    ];
+
+    return Form(
+      key: _formKey,
+      child: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Lançar competência anterior',
+              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: AppTheme.spacingSm),
+            Text(
+              'Aluno: ${widget.aluno.nome}',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: AppTheme.spacingMd),
+            
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: DropdownButtonFormField<int>(
+                    value: _mes,
+                    decoration: const InputDecoration(labelText: 'Mês'),
+                    items: List.generate(12, (index) {
+                      return DropdownMenuItem<int>(
+                        value: index + 1,
+                        child: Text(mesesNomes[index]),
+                      );
+                    }),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _mes = v);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: _ano,
+                    decoration: const InputDecoration(labelText: 'Ano'),
+                    items: anosDisponiveis.map((ano) {
+                      return DropdownMenuItem<int>(
+                        value: ano,
+                        child: Text(ano.toString()),
+                      );
+                    }).toList(),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _ano = v);
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppTheme.spacingSm),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<PagamentoStatus>(
+                    value: _status,
+                    decoration: const InputDecoration(labelText: 'Status'),
+                    items: const [
+                      DropdownMenuItem(value: PagamentoStatus.pago, child: Text('Pago')),
+                      DropdownMenuItem(value: PagamentoStatus.pendente, child: Text('Pendente')),
+                      DropdownMenuItem(value: PagamentoStatus.atrasado, child: Text('Atrasado')),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) setState(() => _status = v);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: _valorController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: const [BrlCurrencyInputFormatter()],
+                    decoration: const InputDecoration(labelText: 'Valor'),
+                    validator: (v) {
+                      final valor = parseBrlCurrency((v ?? '').trim());
+                      if (valor == null || valor <= 0) return 'Valor inválido';
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            
+            if (isPago) ...[
+              const SizedBox(height: AppTheme.spacingSm),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _pagoEm,
+                    firstDate: DateTime(DateTime.now().year - 3),
+                    lastDate: DateTime(DateTime.now().year + 1),
+                  );
+                  if (picked == null) return;
+                  setState(() {
+                    _pagoEm = DateTime(
+                      picked.year,
+                      picked.month,
+                      picked.day,
+                      _pagoEm.hour,
+                      _pagoEm.minute,
+                    );
+                  });
+                },
+                icon: const Icon(Icons.event_outlined),
+                label: Text('Data: ${DateFormat('dd/MM/yyyy').format(_pagoEm)}'),
+              ),
+              const SizedBox(height: AppTheme.spacingSm),
+              TextFormField(
+                controller: _comprovanteController,
+                decoration: const InputDecoration(
+                  labelText: 'Link do comprovante (opcional)',
+                ),
+              ),
+              const SizedBox(height: AppTheme.spacingSm),
+              TextFormField(
+                controller: _obsController,
+                textCapitalization: TextCapitalization.sentences,
+                inputFormatters: const [FirstLetterUppercaseFormatter()],
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Observações (opcional)',
+                ),
+              ),
+            ],
+            
+            const SizedBox(height: AppTheme.spacingMd),
+            
+            Consumer(
+              builder: (context, ref, _) {
+                return FilledButton(
+                  onPressed: () async {
+                    if (!_formKey.currentState!.validate()) return;
+                    final valor = parseBrlCurrency(_valorController.text.trim());
+                    if (valor == null || valor <= 0) return;
+                    
+                    final compStr = '$_ano-${_mes.toString().padLeft(2, '0')}';
+                    
+                    if (widget.aluno.pagamentos.containsKey(compStr)) {
+                      final overwrite = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Competência já existe'),
+                          content: Text('A competência $compStr já possui um registro. Deseja sobrescrevê-la?'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Não')),
+                            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sim')),
+                          ],
+                        ),
+                      );
+                      if (overwrite != true) return;
+                    }
+                    
+                    if (!context.mounted) return;
+                    Navigator.of(context).pop();
+                    
+                    try {
+                      await ref.read(alunosActionsControllerProvider).registrarCompetenciaAvulsa(
+                        aluno: widget.aluno,
+                        competencia: compStr,
+                        status: _status,
+                        valor: valor,
+                        pagoEm: isPago ? _pagoEm : null,
+                        comprovanteUrl: isPago && _comprovanteController.text.trim().isNotEmpty 
+                            ? _comprovanteController.text.trim() 
+                            : null,
+                        observacao: isPago && _obsController.text.trim().isNotEmpty 
+                            ? forceFirstLetterUppercase(_obsController.text.trim()) 
+                            : null,
+                      );
+                      
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Competência $compStr lançada com sucesso.')),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Erro ao lançar competência: $e')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Lançar Competência'),
+                );
+              }
             ),
           ],
         ),
